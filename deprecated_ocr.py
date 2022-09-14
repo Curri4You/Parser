@@ -8,8 +8,8 @@ import shutil
 """
 
 # Provide your username and license code
-LicenseCode = '<username>';
-UserName =  'license code';
+LicenseCode = "854BD2C4-638E-4D8F-8C9C-C699C484EDE6";
+UserName =  "SMLEE099";
 
 try:
 	import requests
@@ -65,16 +65,16 @@ except ImportError:
 # Build your OCR:
 
 # Extract text with English language by default
-RequestUrl = "http://www.ocrwebservice.com/restservices/processDocument?gettext=true";
+#RequestUrl = "http://www.ocrwebservice.com/restservices/processDocument?gettext=true";
 
 # Extract text with English and german language using zonal OCR
 #RequestUrl = 'http://www.ocrwebservice.com/restservices/processDocument?language=english,german&zone=0:0:600:400,500:1000:150:400';
 
 # Convert first 5 pages of multipage document into doc and txt
-# RequestUrl = 'http://www.ocrwebservice.com/restservices/processDocument?language=english&pagerange=1-5&outputformat=doc,txt';
+RequestUrl = 'http://www.ocrwebservice.com/restservices/processDocument?language=english&pagerange=1-5&outputformat=doc,txt';
 
 #Full path to uploaded document
-FilePath = "C:\\test_image.jpg"
+FilePath ="D:\\3.그림\\삼각안경.jpg"
 
 with open(FilePath, 'rb') as image_file:
     image_data = image_file.read()
@@ -123,9 +123,9 @@ print("Zone 1 Page 2 Text:" + str(jobj["OCRText"][0][1]))
 #print("Zone 2 Page 2 Text:" + str(jobj["OCRText"][1][1]))
 
 #Download output file (if outputformat was specified)
-#file_response = requests.get(jobj["OutputFileUrl"], stream=True)
-#with open("outputDoc.doc", 'wb') as output_file:
-#   shutil.copyfileobj(file_response.raw, output_file)
+file_response = requests.get(jobj["OutputFileUrl"], stream=True)
+with open("outputDoc.doc", 'wb') as output_file:
+   shutil.copyfileobj(file_response.raw, output_file)
 
 
 

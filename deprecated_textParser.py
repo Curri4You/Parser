@@ -12,19 +12,25 @@ class textParser():
     def print_dependencies(self):
         pass
     
-    def prepare_files(self,filepath):
+    def prepare_file(self,filepath):
         
         #open file
-        for filename in os.listdir(filepath):
-            filename_full=filepath+'\\'+filename
-            self.descriptors.append(open(filename_full,'r'))
-            
+        self.descriptors.append(open(filepath,'r'))
+        info=None
+        content=None
+        myPanda=pd.DataFrame(content,columns=[])
+        
         #extract info rows and leave only the course rows
-
+        return myPanda 
+    def prepare_files(self,path):
+     	for filename in os.listdir(path):
+            filepath=path+'\\'+filename
+            info, content=self.prepare_file(filepath)
+            
         return self.descriptors
     
-    def files2pd(self):
-        pass
+    
+
 
 
 if __name__=="__main__":
