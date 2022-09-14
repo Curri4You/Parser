@@ -15,9 +15,9 @@ df2=df.iloc[jg_index:j_index]#전공기초
 df3=df.iloc[j_index:g_index]#[교과과정안내]
 '''
 def dataframe_splitter(df):
-    print(':::::::::::::::::df:::::::::::::::::')
+    '''print(':::::::::::::::::df:::::::::::::::::')
     print('length:\t',len(df))
-    print('keys:\t',df.keys())
+    print('keys:\t',df.keys())'''
     
     #index column 제외
     df=df.iloc[:,1:]
@@ -25,7 +25,7 @@ def dataframe_splitter(df):
     new_columns=[i for i in range(df.shape[-1])]
     df.columns=new_columns
     
-    print(df.columns)
+    #print(df.columns)
     #index 식별
     nav_index=df[df.iloc[:0]=='기초교양'].index.to_list()[0]
     a_index=nav_index
