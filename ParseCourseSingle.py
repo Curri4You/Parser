@@ -6,6 +6,7 @@ from utils import *
 import re
 import json
 
+
 def general_info_extract(ser,columns=['flag','type','necessary','pyeonip_listen']):
 	info=[]
 	#내용이 있는 열만 모은다
@@ -27,6 +28,7 @@ def bar(eesoo):
 def import_columns():
     with open('nav_json.json','r') as f:
     	return json.load(f)['course_columns']
+
 class ParseCourseSet:
     def __init__(self,df):
         self.orig_df=df.fillna('')#콜랩에서는 ''더니 여기에서는 또 Nan으로 나와서 전부 바꿔줌
@@ -56,12 +58,72 @@ class ParseCourseSet:
                 if i!='':
                     divisor.append((index,i.strip(' ')))
         self.divisor=divisor
-    def single_json_on_single_df(self):
+        
+    #need work: 아직 ms에서 바꾸지 않음
+    def single_json_on_single_df_m(self):#mid and small
         #prepare divisor and df
         self.single_big_standard()
         
         #init for use
-        big_standards={}
+        mid_standards={}
+        docs={}
+        joined={'general_info':self.general_info.to_json()}#전송될 json
+        course_columns=self.course_columns
+        
+        #init for shorter naming
+        divisor=self.divisor
+        courses=self.df.copy()
+        
+        #파싱 시작
+        for i,tup in enumerate(divisor):
+            index,val=tup
+            start=index
+            
+            #:::::::::::::::::::::::::::::::"-"중기준::::::::::::::::::::::::::::::::::::
+            if '-' in val:
+                key=list(mid_standards.keys())[-1] #직전 big divisor의 val이 필요함
+                joined[key]={'mid_standard':mid_standards[key],'docs':docs}
+                docs={}
+                
+                biginfo=list(courses.iloc[index])#이수항목 빼고
+                flag=pd.DataFrame([biginfo[0].strip(' ')],columns=['flag'])
+                eesoo=bar(biginfo[2])
+                other=[]
+                for metainfo in biginfo[3:]:
+                    if metainfo=='':
+                        continue
+                    else:
+                        other.append(metainfo)
+                if len(other)==1:#''가 아닌 항목이 1개라면 '필수'가 없는거고 2개라면 있는거다 
+                    other.insert(0,'None')
+                other=pd.DataFrame([other],columns=['necessary','pyeonip_listen'])
+                mid_standards[val]=pd.concat([flag,eesoo,other],axis=1).to_json()#big standards 저장
+            
+            #데이터프레임 자르기
+            if i==len(divisor)-1:#마지막이면
+                doc=courses.iloc[start:]
+                doc=doc.drop(labels=[2,4,5,6,7,9,19],axis='columns')
+                doc.columns=course_columns
+                docs[val]=doc.to_json()
+            else:
+                doc=h_courses.iloc[start:divisor[i+1][0]]
+                doc=doc.drop(labels=[2,4,5,6,7,9,19],axis='columns')
+                doc.columns=course_columns
+                docs[val]=doc.to_json()
+            
+        #마지막 big standard를 위한 저장 
+        print('마지막?')
+        key=list(mid_standards.keys())[-1]
+        #직전 big divisor의 val이 필요함
+        joined[key]={'mid_standard':mid_standards[key],'docs':docs}
+        return joined
+    
+    def single_json_on_single_df_ms(self):#mid and small
+        #prepare divisor and df
+        self.single_big_standard()
+        
+        #init for use
+        mid_standards={}
         standards={}
         docs={}
         joined={'general_info':self.general_info.to_json()}#전송될 json
@@ -76,11 +138,11 @@ class ParseCourseSet:
             index,val=tup
             start=index
             
-            #:::::::::::::::::::::::::::::::대기준::::::::::::::::::::::::::::::::::::
+            #:::::::::::::::::::::::::::::::"-"중기준::::::::::::::::::::::::::::::::::::
             if '-' in val:
-                if len(standards)!=0:#두 번째 이상 big standard인 경우 전 big_standard 것을 저장한다
-                    key=list(big_standards.keys())[-1] #직전 big divisor의 val이 필요함
-                    joined[key]={'big_standard':big_standards[key],'small_standard':standards,'docs':docs}
+                if len(standards)!=0:#두 번째 이상 big standard인 경우 전 mid_standard 것을 저장한다
+                    key=list(mid_standards.keys())[-1] #직전 big divisor의 val이 필요함
+                    joined[key]={'mid_standard':mid_standards[key],'small_standard':standards,'docs':docs}
                     standards={}
                     docs={}
                 biginfo=list(courses.iloc[index])#이수항목 빼고
@@ -95,9 +157,9 @@ class ParseCourseSet:
                 if len(other)==1:#''가 아닌 항목이 1개라면 '필수'가 없는거고 2개라면 있는거다 
                     other.insert(0,'None')
                 other=pd.DataFrame([other],columns=['necessary','pyeonip_listen'])
-                big_standards[val]=pd.concat([flag,eesoo,other],axis=1).to_json()#big standards 저장
+                mid_standards[val]=pd.concat([flag,eesoo,other],axis=1).to_json()#big standards 저장
             
-            #:::::::::::::::::::::::::::::::소기준:::::::::::::::::::::::::::::::::::                
+            #:::::::::::::::::::::::::::::::"#"소기준:::::::::::::::::::::::::::::::::::                
             else:
                 if '융복합' in val:##융복합교양이라면 index 2에 [1과목 3학점 이수], index 12에 편입생 들어야하는지 여부[Y/N]
                     eesoo=bar(courses.iloc[index,2])
@@ -113,24 +175,33 @@ class ParseCourseSet:
             if i==len(divisor)-1:#마지막이면
                 doc=courses.iloc[start:]
                 doc=doc.drop(labels=[2,4,5,6,7,9,19],axis='columns')
+                doc.columns=course_columns
                 docs[val]=doc.to_json()
             else:
-                doc=h_courses.iloc[start:divisor[i+1][0]]
+                doc=courses.iloc[start:divisor[i+1][0]]
                 doc=doc.drop(labels=[2,4,5,6,7,9,19],axis='columns')
+                doc.columns=course_columns
                 docs[val]=doc.to_json()
             
         #마지막 big standard를 위한 저장 
         if len(standards):
             print('마지막?')
-            key=list(big_standards.keys())[-1]
+            key=list(mid_standards.keys())[-1]
             #직전 big divisor의 val이 필요함
-            joined[key]={'big_standard':big_standards[key],'small_standard':standards,'docs':docs}
+            joined[key]={'mid_standard':mid_standards[key],'small_standard':standards,'docs':docs}
         return joined
     def run_singular(self,save_path):
-        joined=self.single_json_on_single_df()
+        joined=self.mid_single_json_on_single_df_ms()
         with open(save_path,'w') as f:
             json.dump(joined,f)
         return joined
+    
+    def plural_big_standard(self):
+        df=self.orig_df.copy()
+        #big standard를 다 모은다 
+        
+    def run_plural(self,save_path):
+        pass
      
 class ParseNav:
     pass
@@ -153,13 +224,13 @@ if __name__=='__main__':
         if i==0:
             break
     
-    h_courses=dfs[2]
+    h_courses=dfs[3]
     #print(h_courses.iloc[0])
     parser=ParseCourseSet(h_courses)
     #print(parser.general_info)
-    joined=parser.run_singular(root+'h_json.json')
+    #joined=parser.run_singular(root+'h_json.json')
+    joined=parser.single_json_on_single_df_m()
     print(joined['general_info'])
-
 #주의
 '''
 general_info는 json으로 dump했을 때 
