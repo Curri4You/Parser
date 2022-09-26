@@ -109,6 +109,7 @@ class ParseCoursebyType:
         
         #big standard에 맞춰서 df를 자른다.
         bigdfs=[]
+        df_ids=[]
         for i in range(len(big_standard_index)):
             start=big_standard_index[i]
             try:
@@ -117,6 +118,7 @@ class ParseCoursebyType:
                 end=len(df)-1
             slice=tmp.iloc[start:end]
             bigdfs.append(slice)
+            df_ids.append(str(i+1))#1에서 시작한다. 0이면 skip임
             #print(':::::bigdifs count[',i,']',len(slice))
             #print(slice.iloc[1])
             
@@ -167,49 +169,118 @@ class ParseCoursebyType:
             else:
                 print('Miss, your extra setting is a little weird:',extra_setting)
             
-            print(new_big_standard)
-            return new_big_standard, bigdfs
+            #print(new_big_standard)
+            return new_big_standard, bigdfs, df_ids
 
         
-        return bigstandard,bigdfs
+        return bigstandard,bigdfs,df_ids
     #여기부터 0번째 열을 제거한다 
-    def mid_standard(self,dfs):#제거가 안된 dfs를 받게 될 것 
+    def mid_standard(self,df,bigdf_id,extra_setting=-1):#제거가 안된 dfs를 받게 될 것 
         #mid standard:[] 1번째 열의 값, bar, 소속 small 개수]의 리스트
         #middfs: midstandard에 나눠진 1번째 행부터의 df
-        tmp_df=[d.iloc[:,1:] for d in dfs]
+        tmp_df=df.iloc[:,1:]
         
+        print('middfs starts')
         #column은 이름을 바꾸지 않는다--> 나중에 '구분'과 매핑하기 위해서 
         #for all df
         midstandards=[]
-        middfs_s=[]
+        middfs=[]
+        middf_ids=[]
+        
         #midstandard index
-        for df in tmp_df:
-            #per df
-            midstandard=[]
-            middfs=[]
+        #per df
+        
+        #midstandard_index
+        midstandard_index=[]
+        for index,i in enumerate(tmp_df.iloc[:,0]):
+            if '-' in i:
+                midstandard_index.append(index)
+                
+        #midstandard가 없는 경우는 넣지 않는다
+        
+        print(':::::::::::::midstandard::::::::::::',midstandard_index)
+        #get midstandard
+        for index in midstandard_index:
+            #1차 추출
+            mid_standard_orig,_= self.bar(tmp_df.iloc[index])
+            orig_len=len(mid_standard_orig)
             
-            #midstandard_index
-            midstandard_index=[]
-            for index,i in enumerate(df.iloc[:,0]):
-                if '-' in i:
-                    midstandard_index.append(index)
-            if len(midstandard_index)==0:
-                pass #got to pass this on to small standard!
-            print(':::::::::::::midstandard::::::::::::',df.iloc[midstandard_index])
+            #정제 
+            mid_standard_fixed=[]
+            print('MIDSTANDARD:::::::::::::',mid_standard_orig)
+            #공통적인 부분
+            mid_standard_fixed.append(re.sub('[ \0\t-]','',mid_standard_orig[0]))
             
-            #get middfs
-            for i in range(len(midstandard_index)):
-                try:
-                    middf=df.iloc[midstandard_index[i]:midstandard_index[i+1]]
-                    middfs.append(middf)
-                except:
-                    middf=df.iloc[midstandard_index[i]:]
-                    middfs.append(middf)
+            
+            if extra_setting!=-1:
+                
+                '''if extra_setting==0:#g
+                    for i in range(1,orig_len):
+                            element= mid_standard_orig[i]
+                            if '이수' in element:
+                                mid_standard_fixed.append(list(set(re.findall('[\0\t0-9]*',element)))[1:])
+                            elif 'Y' in element:
+                                continue
+                            else:
+                                mid_standard_fixed.append(element)'''
+                if extra_setting==1 or extra_setting==0:#h or g 
+                    for i in range(1,orig_len):
+                            element= mid_standard_orig[i]
+                            if '이수' in element:
+                                mid_standard_fixed.append(list(set(re.findall('[\0\t0-9]*',element)))[1:])
+                            elif 'Y' in element:
+                                continue
+                            else:
+                                mid_standard_fixed.append(element)
+                elif extra_setting==2: #j
+                    if '필수' in mid_standard_fixed[0]:#어차피 다 필수니까 파싱 안해줄거임
+                        for i in range(1,orig_len):
+                            element=mid_standard_orig[i]
+                            if '이수' in element:
+                                mid_standard_fixed.append('-1')
+                            else:
+                                mid_standard_fixed.append(element)
+                                
+                    elif '필' in mid_standard_fixed[0]:
+                        for i in range(1,orig_len):
+                                element= mid_standard_orig[i]
+                                if '이수' in element:
+                                    mid_standard_fixed.append(list(set(re.findall('[\0\t0-9]*',element)))[1:])
+                                else:
+                                    mid_standard_fixed.append(element)
+                    else: #선택
+                        mid_standard_fixed.append('선택')
+                            
+                elif extra_setting==3:#js
+                    if orig_len==1:
+                        mid_standard_fixed.append('선택')
+                    else:
+                        for i in range(1,orig_len):
+                            element= mid_standard_orig[i]
+                            if '이수' in element:
+                                mid_standard_fixed.append(list(set(re.findall('[0-9]*',element)))[1:])
+                            
                     
-            #get midstandard
+                else:
+                    mid_standard_fixed=mid_standard_orig
+            midstandards.append(mid_standard_fixed)
+            
+        #get middfs
+        for i in range(len(midstandard_index)):
+            middf_ids.append(bigdf_id+'-'+str(i+1))#1에서 시작한다. 0이면 skip임
+            try:
+                middf=tmp_df.iloc[midstandard_index[i]:midstandard_index[i+1]]
+                middfs.append(middf)
+            except:
+                middf=tmp_df.iloc[midstandard_index[i]:]
+                middfs.append(middf)
+                
+        #get midstandard
             
         
-        return midstandards,middfs_s
+        return midstandards,middfs
+    
+    
     def small_standard(self,dfs):
         #small standard: [1번째 열의 값, bar]의 리스트
         #smalldfs: smallstandard에 나눠진 1번째 행부터의 df
@@ -234,6 +305,19 @@ class ParseCoursebyType:
         elif depth==1:
             bigstandard,bigdfs=self.big_standard(tmp,extra_setting=mysetting)
             return {'depth':depth,'bigstandard':bigstandard}
+        #bigdf_count, middf_count, smalldf_count *database update required 
+        elif depth==-1:
+            bigstandard,bigdfs,bigdf_ids=self.big_standard(tmp,extra_setting=mysetting)
+            for bigdf,big_id in zip(bigdfs,bigdf_ids):
+                #print('should-mid-be-activated checker ::::::::::::',bigdf.iloc[0,1])
+                if '-' in bigdf.iloc[1,1]: #한 개 bigdf 넣음
+                    midstandard,middfs=self.mid_standard(bigdf,big_id,extra_setting=mysetting)
+                    print(midstandard)
+                    
+                else:
+                    pass #smallstandard,smalldfs=self.small_standard(bigdf)
+            return -1
+            
         else:
             print('depth other than 1,2,3 not implemented:::::::::::::::::')
             return -1
@@ -271,7 +355,7 @@ if __name__=='__main__':
         #parser.big_standard(dfs['js'],extra_setting=3)
         
         #test connection
-        r=parser.run_separate(dfs,depth=2)
+        r=parser.run_separate(dfs,choice='g',depth=-1)
         print(r)
         
 #1부터 20을 준다   
