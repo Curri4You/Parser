@@ -1,4 +1,5 @@
 from ast import excepthandler
+from cgitb import small
 from cmath import nan
 import pandas as pd
 import numpy as np
@@ -11,6 +12,14 @@ import json
 
 currid_path='currid.csv'
 types={'주전공':1,'복수전공':2,'부전공':3,'연계전공':4}
+
+def leave_empty(li):
+    new_li=[]
+    
+    for l in li:
+        if len(l)>0:
+            new_li.append(l)
+    return new_li
 class ParseCoursebyType:
     def __init__(self,outpath):
         self.outpath=outpath
@@ -22,7 +31,7 @@ class ParseCoursebyType:
         ignorable_columns=[]
         for index,i in enumerate(ser):
             if isinstance(i,str):
-                keys.append(re.sub('[\n\[\]]',' ',i))
+                keys.append(re.sub('[\n\[\]#]','',i))
             else:
                 ignorable_columns.append(index)
                 
@@ -105,7 +114,7 @@ class ParseCoursebyType:
          
         bigstandard=[self.bar(df.iloc[index])[0] for index in big_standard_index] #list of lists
         #확인
-        #print(bigstandard)
+        #print(':::::::::::::::::::::::',bigstandard)
         
         #big standard에 맞춰서 df를 자른다.
         bigdfs=[]
@@ -124,6 +133,7 @@ class ParseCoursebyType:
             
         #경우에 따라 파싱       
         if extra_setting!=-1:
+            print('extra_setting:::::::::entered',extra_setting)
             new_big_standard=[]
             if extra_setting==0:#g
                 for standard in bigstandard:
@@ -133,29 +143,33 @@ class ParseCoursebyType:
                         if '이수' in element:
                             element_count+=1
                             #parse
-                            bare_minimum=list(set(re.findall('[0-9]*',element)))[1:]
+                            bare_minimum=leave_empty(list(set(re.findall('[0-9]*',element))))
                         elif 'Y' in element:
                             continue
                         else:
-                            new_standard.append(element)
+                            new_standard.append(element.strip(''))
                     if element_count==0:
                         bare_minimum='-1' # it means all of coursed below this standard is required!! 
                     new_standard.append(bare_minimum) #all new standard must have bare_minimum element 
                     new_big_standard.append(new_standard)
                     
             elif extra_setting==1:#h
+                #print('::::::::::::::::big standard, 1 activated')
                 for standard in bigstandard:
                     
                     new_standard=standard[:-2]#leave out 'Y'
-                    new_standard.append('-1')
                     
+                    new_standard.append('-1')
+                    new_big_standard.append(new_standard)
+                #print('::::::::::::::::',new_standard)
             elif extra_setting==2 or extra_setting==3:#j, js
+                #print('::::::::;big standard, 3 activated')
                 for standard in bigstandard:
                     new_standard=[]
                     for element in standard:
                         if '이수' in element:
                             try:
-                                tmp=list(set(re.findall('[0-9]*',element)))[1:]
+                                tmp=leave_empty(list(set(re.findall('[0-9]*',element))))
                                 #print(tmp,':::::::::::::::::::::')
                                 new_standard.append(tmp)
                             except:
@@ -163,7 +177,7 @@ class ParseCoursebyType:
                                 new_standard.append('-1')
                             
                         else:
-                            new_standard.append(element)
+                            new_standard.append(element.strip(' '))
                     new_big_standard.append(new_standard)
                         
             else:
@@ -180,7 +194,7 @@ class ParseCoursebyType:
         #middfs: midstandard에 나눠진 1번째 행부터의 df
         tmp_df=df.iloc[:,1:]
         
-        print('middfs starts')
+        #print('middfs starts')
         #column은 이름을 바꾸지 않는다--> 나중에 '구분'과 매핑하기 위해서 
         #for all df
         midstandards=[]
@@ -198,7 +212,6 @@ class ParseCoursebyType:
                 
         #midstandard가 없는 경우는 넣지 않는다
         
-        print(':::::::::::::midstandard::::::::::::',midstandard_index)
         #get midstandard
         for index in midstandard_index:
             #1차 추출
@@ -207,7 +220,7 @@ class ParseCoursebyType:
             
             #정제 
             mid_standard_fixed=[]
-            print('MIDSTANDARD:::::::::::::',mid_standard_orig)
+            #print('MIDSTANDARD:::::::::::::',mid_standard_orig)
             #공통적인 부분
             mid_standard_fixed.append(re.sub('[ \0\t-]','',mid_standard_orig[0]))
             
@@ -269,22 +282,65 @@ class ParseCoursebyType:
         for i in range(len(midstandard_index)):
             middf_ids.append(bigdf_id+'-'+str(i+1))#1에서 시작한다. 0이면 skip임
             try:
-                middf=tmp_df.iloc[midstandard_index[i]:midstandard_index[i+1]]
+                middf=tmp_df.iloc[midstandard_index[i]+1:midstandard_index[i+1]]
                 middfs.append(middf)
             except:
-                middf=tmp_df.iloc[midstandard_index[i]:]
+                middf=tmp_df.iloc[midstandard_index[i]+1:]
                 middfs.append(middf)
                 
         #get midstandard
             
         
-        return midstandards,middfs
+        return midstandards,middfs,middf_ids
     
     
-    def small_standard(self,dfs):
+    def small_standard(self,df,id): #하나의 DF만 받는다, #가 없으면 안 받는다, middf를 거치지 않은 건 없을 것이다.
         #small standard: [1번째 열의 값, bar]의 리스트
         #smalldfs: smallstandard에 나눠진 1번째 행부터의 df
-        return smallstandard,smalldfs
+        
+        tmp_df=df.copy()
+        
+        #get index
+        smallstandard_index=[]
+        for index,i in enumerate(tmp_df.iloc[:,0]):
+            if '#' in i:
+                smallstandard_index.append(index)
+          
+        #get smallstandards
+        smallstandards=[]
+        for index in smallstandard_index:
+            smallstandard=self.bar(tmp_df.iloc[index])[0]
+            fixed_standard=[]
+            for element in smallstandard:
+                if '이수' in element:
+                    fixed_standard.append(leave_empty(list(set(re.findall('[0-9]*',element)))))
+                elif 'Y' in element:
+                    if '필수' in smallstandard[-1]:
+                        continue
+                    else:
+                        fixed_standard.append('필수')
+                else:
+                    fixed_standard.append(element.strip(' '))
+            smallstandards.append(fixed_standard)
+        
+        
+        
+        print('::::::::::::::::;smallstandards:::::::::::::::::\n',smallstandards)
+        
+        #smalldfs
+        smalldfs=[]
+        small_ids=[]
+        for i in range(len(smallstandard_index)):
+            start=smallstandard_index[i] 
+            try:
+                end=smallstandard_index[i+1]
+            except:
+                end=len(tmp_df)-1
+            smalldfs.append(tmp_df.iloc[start+1:end])
+            small_ids.append(id+'-'+str(i+1))
+       
+        
+        return smallstandards,smalldfs,small_ids
     def run_separate(self, dfs,depth=1,choice='g',ifnav=False):
         
         settings={'g':0,'h':1,'j':2,'js':3}
@@ -307,16 +363,40 @@ class ParseCoursebyType:
             return {'depth':depth,'bigstandard':bigstandard}
         #bigdf_count, middf_count, smalldf_count *database update required 
         elif depth==-1:
+            #print('depth')
+            final_ids=[]
+            final_dfs=[]
+            final_standards=[]
             bigstandard,bigdfs,bigdf_ids=self.big_standard(tmp,extra_setting=mysetting)
-            for bigdf,big_id in zip(bigdfs,bigdf_ids):
+            print(bigstandard)
+            for bigdf,big_id,bigs in zip(bigdfs,bigdf_ids,bigstandard):
                 #print('should-mid-be-activated checker ::::::::::::',bigdf.iloc[0,1])
                 if '-' in bigdf.iloc[1,1]: #한 개 bigdf 넣음
-                    midstandard,middfs=self.mid_standard(bigdf,big_id,extra_setting=mysetting)
-                    print(midstandard)
-                    
+                    #print('mid activated')
+                    midstandard,middfs,mid_ids=self.mid_standard(bigdf,big_id,extra_setting=mysetting)
+                    #print(midstandard)
+                    for middf ,mid_id,mids in zip(middfs,mid_ids,midstandard):
+                        if len(middf)>1:
+                            if '#' in middf.iloc[0,0]:
+                                #print('small activated')
+                                smallstandard,smalldfs,small_ids=self.small_standard(middf,mid_id)
+                                final_ids.append(small_ids)
+                                final_dfs.append(smalldfs)
+                                final_standards.append(smallstandard)
+                            else:
+                                #smallstandard가 없고 mid로 끝남
+                                final_ids.append(mid_id+'-0')
+                                final_dfs.append(middf)
+                                final_standards.append(mids)
                 else:
-                    pass #smallstandard,smalldfs=self.small_standard(bigdf)
-            return -1
+                    #midstandardd가 없고 big로 끝남
+                    final_ids.append(big_id+'-0-0')
+                    final_dfs.append(bigdf)
+                    final_standards.append(bigs)
+                    
+                
+                    
+            return final_ids,final_dfs,final_standards
             
         else:
             print('depth other than 1,2,3 not implemented:::::::::::::::::')
@@ -355,7 +435,7 @@ if __name__=='__main__':
         #parser.big_standard(dfs['js'],extra_setting=3)
         
         #test connection
-        r=parser.run_separate(dfs,choice='g',depth=-1)
-        print(r)
+        final_ids,final_dfs,final_standards=parser.run_separate(dfs,choice='h',depth=-1)
+        print(final_standards)
         
 #1부터 20을 준다   
