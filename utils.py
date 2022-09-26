@@ -7,7 +7,7 @@ def dataframe_generator(root,filenames):
         df= pd.read_csv(root+file,header=None)
         new_columns=[i for i in range(df.shape[-1])]
         df.columns=new_columns
-        print('CURRICULUM OPENS:::::::::::::::::\n',df.columns)
+        print('CURRICULUM OPENS:::::::::::::::::\n',file)
         yield df
 
 def dataframe_emptycol_drop(df):
@@ -21,7 +21,7 @@ df2=df.iloc[jg_index:j_index]#전공기초
 df3=df.iloc[j_index:g_index]#[교과과정안내]
 '''
 def dataframe_splitter(df):
-    print('\n\nDf being splitted ::::::::::::::::::::')
+    print('\n\nDf being splitted ::::::::::::::::::::\n\n')
 
     
     #index column 제외
@@ -35,7 +35,7 @@ def dataframe_splitter(df):
     jg_index=df[df.iloc[:,0]=='전공기초'].index.to_list()[0]
     j_index=df[df.iloc[:,0]=='전공'].index.to_list()[0]
     g_index=df[df.iloc[:,0]=='[교과과정안내]'].index.to_list()[0]
-    print(a_index,'\t',h_index,'\t',jg_index,'\t',j_index,'\t',g_index)
+    #print(a_index,'\t',h_index,'\t',jg_index,'\t',j_index,'\t',g_index)
     #df split
     nav=df.iloc[:a_index]
     df0=df.iloc[a_index:h_index]#기초교양

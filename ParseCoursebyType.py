@@ -20,6 +20,23 @@ def leave_empty(li):
         if len(l)>0:
             new_li.append(l)
     return new_li
+
+#stackoverflow
+def flatten(nestedList):
+ 
+    # check if list is empty
+    if not(bool(nestedList)):
+        return nestedList
+ 
+     # to check instance of list is empty or not
+    if isinstance(nestedList[0], list):
+ 
+        # call function with sublist as argument
+        return flatten(*nestedList[:1]) + flatten(nestedList[1:])
+ 
+    # call function with sublist as argument
+    return nestedList[:1] + flatten(nestedList[1:])
+ 
 class ParseCoursebyType:
     def __init__(self,outpath):
         self.outpath=outpath
@@ -125,15 +142,15 @@ class ParseCoursebyType:
                 end=big_standard_index[i+1]
             except:
                 end=len(df)-1
-            slice=tmp.iloc[start:end]
+            slice=tmp.iloc[start+1:end]
             bigdfs.append(slice)
+            #print('::::::::WRAER:;',str(i+1),len(slice))
             df_ids.append(str(i+1))#1에서 시작한다. 0이면 skip임
             #print(':::::bigdifs count[',i,']',len(slice))
             #print(slice.iloc[1])
             
         #경우에 따라 파싱       
         if extra_setting!=-1:
-            print('extra_setting:::::::::entered',extra_setting)
             new_big_standard=[]
             if extra_setting==0:#g
                 for standard in bigstandard:
@@ -325,7 +342,7 @@ class ParseCoursebyType:
         
         
         
-        print('::::::::::::::::;smallstandards:::::::::::::::::\n',smallstandards)
+        #print('::::::::::::::::;smallstandards:::::::::::::::::\n',smallstandards)
         
         #smalldfs
         smalldfs=[]
@@ -349,32 +366,26 @@ class ParseCoursebyType:
         if ifnav==True:
             return self.nav(dfs['nav'])
         tmp=dfs[choice].copy()
-        if depth==3:
-            bigstandard,bigdfs=self.big_standard(tmp,extra_setting=mysetting)
-            midstandard,middfs=self.mid_standard(bigdfs)
-            smallstandard,smalldfs=self.small_standard(middfs)
-            return {'depth':depth,'bigstandard':bigstandard,'midstandard':midstandard,'smallstandard':smallstandard,'dfs':smalldfs}
-        elif depth==2:
-            bigstandard,bigdfs=self.big_standard(tmp,extra_setting=mysetting)
-            midstandard,middfs=self.mid_standard(bigdfs)
-            return {'depth':depth,'bigstandard':bigstandard,'midstandard':midstandard}
-        elif depth==1:
-            bigstandard,bigdfs=self.big_standard(tmp,extra_setting=mysetting)
-            return {'depth':depth,'bigstandard':bigstandard}
+        
+
         #bigdf_count, middf_count, smalldf_count *database update required 
-        elif depth==-1:
+   
             #print('depth')
-            final_ids=[]
-            final_dfs=[]
-            final_standards=[]
-            bigstandard,bigdfs,bigdf_ids=self.big_standard(tmp,extra_setting=mysetting)
-            print(bigstandard)
-            for bigdf,big_id,bigs in zip(bigdfs,bigdf_ids,bigstandard):
-                #print('should-mid-be-activated checker ::::::::::::',bigdf.iloc[0,1])
+        final_ids=[]
+        final_dfs=[]
+        final_standards={}
+        
+        bigstandard,bigdfs,bigdf_ids=self.big_standard(tmp,extra_setting=mysetting)
+        final_standards['big']=bigstandard
+        #print(bigstandard)
+        for bigdf,big_id in zip(bigdfs,bigdf_ids):
+            #print('should-mid-be-activated checker ::::::::::::',bigdf.iloc[0,1])
+            try:
                 if '-' in bigdf.iloc[1,1]: #한 개 bigdf 넣음
                     #print('mid activated')
                     midstandard,middfs,mid_ids=self.mid_standard(bigdf,big_id,extra_setting=mysetting)
                     #print(midstandard)
+                    final_standards['mid']=midstandard
                     for middf ,mid_id,mids in zip(middfs,mid_ids,midstandard):
                         if len(middf)>1:
                             if '#' in middf.iloc[0,0]:
@@ -382,25 +393,29 @@ class ParseCoursebyType:
                                 smallstandard,smalldfs,small_ids=self.small_standard(middf,mid_id)
                                 final_ids.append(small_ids)
                                 final_dfs.append(smalldfs)
-                                final_standards.append(smallstandard)
+                                final_standards['small']=smallstandard
+                                #final_standards.append(smallstandard)
                             else:
                                 #smallstandard가 없고 mid로 끝남
                                 final_ids.append(mid_id+'-0')
                                 final_dfs.append(middf)
-                                final_standards.append(mids)
+                                #final_standards.append(mids)
                 else:
                     #midstandardd가 없고 big로 끝남
                     final_ids.append(big_id+'-0-0')
                     final_dfs.append(bigdf)
-                    final_standards.append(bigs)
-                    
+                    #final_standards.append(bigs)
+            except:#bigdf가 길이가 1임
+                #midstandardd가 없고 big로 끝남
+                final_ids.append(big_id+'-0-0')
+                final_dfs.append(bigdf)
+        #flatten
+        final_ids=flatten(final_ids)
+        final_dfs=flatten(final_dfs)
                 
-                    
-            return final_ids,final_dfs,final_standards
-            
-        else:
-            print('depth other than 1,2,3 not implemented:::::::::::::::::')
-            return -1
+        return final_ids,final_dfs,final_standards
+        
+        
       
 if __name__=='__main__':
     #test dataframe_generator
@@ -409,17 +424,30 @@ if __name__=='__main__':
     #test dataframe_splitter
     for df in dataframe_generator(root,filenames):
         #print(len(dataframe_splitter(df)))
-        print('\n\nchecking...:::::::::::::::::::::::::::::::\n',df[df.iloc[:,1]=='기초교양'].index.to_list()[0])
-        #for i,d in enumerate(dataframe_splitter(df).values()):
-            #if i==0:
-                #print(d)
-            #print(':::::::::::::::::::\n',d[1].value_counts())
-
-        
+ 
         #check if d is given right 
         dfs=dataframe_splitter(df)#dfs는 dictionary다. 
         parser=ParseCoursebyType('testoutput')
         
+   
+        #test connection
+        #g,h,j,js
+        for choice in ['g','h','j','js']:
+            print('================================',choice,'================================')
+            final_ids,final_dfs,final_standards=parser.run_separate(dfs,choice=choice,depth=-1) #h는 ㅎ[안에 ]
+            
+            #check standards
+            for key in final_standards.keys():
+                print(key,':::::::')
+                print(final_standards[key],'\n\n')
+            
+            for id,df in zip(final_ids,final_dfs):
+                print('id and corresponding dataframe ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::;')
+                print(id)
+                print(len(df))
+            
+            
+            
         #test parsing general_info
         #general_info=parser.general_info(dfs['nav'])
         #print(general_info)
@@ -434,8 +462,5 @@ if __name__=='__main__':
         #parser.big_standard(dfs['j'],extra_setting=2)
         #parser.big_standard(dfs['js'],extra_setting=3)
         
-        #test connection
-        final_ids,final_dfs,final_standards=parser.run_separate(dfs,choice='h',depth=-1)
-        print(final_standards)
         
 #1부터 20을 준다   
