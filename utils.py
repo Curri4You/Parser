@@ -59,4 +59,4 @@ if __name__=='__main__':
             if i==0:
                 print(d)
             #print(':::::::::::::::::::\n',d[1].value_counts())
-            
+#1부터 20을 준다   

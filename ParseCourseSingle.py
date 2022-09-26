@@ -29,7 +29,7 @@ def import_columns():
     with open('nav_json.json','r') as f:
     	return json.load(f)['course_columns']
 
-class ParseCourseSet:
+class ParseCourseSingle:
     def __init__(self,df):
         self.orig_df=df.fillna('')#콜랩에서는 ''더니 여기에서는 또 Nan으로 나와서 전부 바꿔줌
         self.general_info=general_info_extract(self.orig_df.iloc[0])
@@ -226,7 +226,7 @@ if __name__=='__main__':
     
     h_courses=dfs[3]
     #print(h_courses.iloc[0])
-    parser=ParseCourseSet(h_courses)
+    parser=ParseCourseSingle(h_courses)
     #print(parser.general_info)
     #joined=parser.run_singular(root+'h_json.json')
     joined=parser.single_json_on_single_df_m()
