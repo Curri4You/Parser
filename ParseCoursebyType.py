@@ -45,15 +45,15 @@ class ParseCoursebyType:
     
     def bar(self,ser):#input: a series 
         keys=[]
-        ignorable_columns=[]
+        key_indices=[]
+        
         for index,i in enumerate(ser):
             if isinstance(i,str):
                 keys.append(re.sub('[\n\[\]#]','',i))
-            else:
-                ignorable_columns.append(index)
+                key_indices.append(index)
                 
         #print('::::::::YOUR BARS FOR YOUR CURRICULUM',keys)   
-        return keys,ignorable_columns
+        return keys,key_indices
     def general_info(self,df):
         gen={}
         #currid
@@ -72,16 +72,20 @@ class ParseCoursebyType:
         
         #year
         try:
-            year=int(df.iloc[2,0][:4])
+            year=int(df.iloc[2,1][:4])#2,1
         except:
-            print(df.iloc[2,0])
+            print(df.iloc[0:4,0:5])
             year=int(input('Unable to parse year, input it yourself:'))
 
         #대학
         global types
-        belongto=df.iloc[5,0].split('  ')#2개 스페이스로 구분됨
+        try:
+            belongto=df.iloc[5,1].split('  ')#2개 스페이스로 구분됨 #5,1
+        except:
+            print(df.iloc[3:7,0:3])
+            belongto=input('Unable to parse 소속, copy and paste:').split('  ')
         
-        if len(belongto)==4:#학부와 전공이 있음
+        if len(belongto)>=4:#학부와 전공이 있음
             college,div,subject,subject_type=belongto
             div=div.split(':')[-1]
             subject=subject.split(':')[-1]
@@ -102,18 +106,12 @@ class ParseCoursebyType:
         gen['curr_id']=mycurrid 
         return gen
     def nav(self,df):
-        #구분까지
+        #구분제외
         #nav:  n개의 bar 항목
         #columns: '구분' 행에 있는 것들
-        keys,ignorable_columns_candidates=self.bar(df.iloc[9])
-        tmp=df.copy()
-        ignorable_columns=[]
-        for i in ignorable_columns_candidates:
-            if tmp[i].dropna().empty:
-                ignorable_columns.append(i)
+        keys,key_indices=self.bar(df.iloc[9])
         
-
-        return keys,ignorable_columns
+        return keys[1:],key_indices[1:]
     
     #included in run
     def big_standard(self,df,extra_setting=-1):
@@ -143,6 +141,7 @@ class ParseCoursebyType:
             except:
                 end=len(df)-1
             slice=tmp.iloc[start+1:end]
+            #print('\n\n!!!!!!!!!!!!!!!!!!!!!!!!!!\n',extra_setting,'sliced to\n',start,slice.head(1),"\n!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n")
             bigdfs.append(slice)
             #print('::::::::WRAER:;',str(i+1),len(slice))
             df_ids.append(str(i+1))#1에서 시작한다. 0이면 skip임
@@ -244,20 +243,11 @@ class ParseCoursebyType:
             
             if extra_setting!=-1:
                 
-                '''if extra_setting==0:#g
-                    for i in range(1,orig_len):
-                            element= mid_standard_orig[i]
-                            if '이수' in element:
-                                mid_standard_fixed.append(list(set(re.findall('[\0\t0-9]*',element)))[1:])
-                            elif 'Y' in element:
-                                continue
-                            else:
-                                mid_standard_fixed.append(element)'''
                 if extra_setting==1 or extra_setting==0:#h or g 
                     for i in range(1,orig_len):
                             element= mid_standard_orig[i]
                             if '이수' in element:
-                                mid_standard_fixed.append(list(set(re.findall('[\0\t0-9]*',element)))[1:])
+                                mid_standard_fixed.append(leave_empty(list(set(re.findall('[\0\t0-9]*',element)))))
                             elif 'Y' in element:
                                 continue
                             else:
@@ -315,7 +305,7 @@ class ParseCoursebyType:
         #small standard: [1번째 열의 값, bar]의 리스트
         #smalldfs: smallstandard에 나눠진 1번째 행부터의 df
         
-        tmp_df=df.copy()
+        tmp_df=df.copy()#.iloc[1:]
         
         #get index
         smallstandard_index=[]
@@ -326,7 +316,7 @@ class ParseCoursebyType:
         #get smallstandards
         smallstandards=[]
         for index in smallstandard_index:
-            smallstandard=self.bar(tmp_df.iloc[index])[0]
+            smallstandard,_=self.bar(tmp_df.iloc[index])[0]
             fixed_standard=[]
             for element in smallstandard:
                 if '이수' in element:
@@ -348,7 +338,7 @@ class ParseCoursebyType:
         smalldfs=[]
         small_ids=[]
         for i in range(len(smallstandard_index)):
-            start=smallstandard_index[i] 
+            start=smallstandard_index[i]
             try:
                 end=smallstandard_index[i+1]
             except:
@@ -380,47 +370,80 @@ class ParseCoursebyType:
         #print(bigstandard)
         for bigdf,big_id in zip(bigdfs,bigdf_ids):
             #print('should-mid-be-activated checker ::::::::::::',bigdf.iloc[0,1])
+            #print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',bigdf.iloc[0,1])
             try:
-                if '-' in bigdf.iloc[1,1]: #한 개 bigdf 넣음
-                    #print('mid activated')
+                if '-' in bigdf.iloc[0,1]: #한 개 bigdf 넣음
+                    #print('mid activated!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                     midstandard,middfs,mid_ids=self.mid_standard(bigdf,big_id,extra_setting=mysetting)
                     #print(midstandard)
                     final_standards['mid']=midstandard
                     for middf ,mid_id,mids in zip(middfs,mid_ids,midstandard):
                         if len(middf)>1:
                             if '#' in middf.iloc[0,0]:
-                                #print('small activated')
+                                #print('small activated!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                                 smallstandard,smalldfs,small_ids=self.small_standard(middf,mid_id)
                                 final_ids.append(small_ids)
-                                final_dfs.append(smalldfs)
+                                final_dfs.append(smalldfs.copy())
                                 final_standards['small']=smallstandard
                                 #final_standards.append(smallstandard)
                             else:
                                 #smallstandard가 없고 mid로 끝남
                                 final_ids.append(mid_id+'-0')
-                                final_dfs.append(middf)
+                                final_dfs.append(middf.copy())
                                 #final_standards.append(mids)
                 else:
                     #midstandardd가 없고 big로 끝남
                     final_ids.append(big_id+'-0-0')
-                    final_dfs.append(bigdf)
+                    final_dfs.append(bigdf.iloc[:,1:])
                     #final_standards.append(bigs)
             except:#bigdf가 길이가 1임
                 #midstandardd가 없고 big로 끝남
                 final_ids.append(big_id+'-0-0')
-                final_dfs.append(bigdf)
+                final_dfs.append(bigdf.iloc[:,1:])
         #flatten
         final_ids=flatten(final_ids)
         final_dfs=flatten(final_dfs)
                 
         return final_ids,final_dfs,final_standards
         
+def run_parser(root,filenames):
+#test dataframe_splitter
+    df_generator=dataframe_generator(root,filenames)
+    for df in df_generator:
+        #print(len(dataframe_splitter(df)))
         
+        #check if d is given right 
+        dfs=dataframe_splitter(df)#dfs는 dictionary다. 
+        parser=ParseCoursebyType('testoutput')
+        
+   
+        #test connection
+        #g,h,j,js
+        resultdict={}
+        for choice in ['g','h','j','js']:
+            final_ids,final_dfs,final_standards=parser.run_separate(dfs,choice=choice,depth=-1) #h는 ㅎ[안에 ]
+            resultdict[choice]={'ids':final_ids,'dfs':final_dfs,'standards':final_standards}
+        #nav and general info
+        resultdict['nav']=parser.nav(df)
+        resultdict['general_info']=parser.general_info(df)
+        
+        yield resultdict
+            
+            
+            
       
 if __name__=='__main__':
     #test dataframe_generator
     root='.\\content\\gdrive\\MyDrive\\competition_data\\curri\\'
-
+    filenames=['20sabo_xls.csv','20comgong_xls.csv']
+    
+    resultdict=run_parser(root,filenames)
+    for result in resultdict:
+        print(result['general_info'])
+        print(result['nav'])
+        print(result['g']['dfs'][0])
+        print(result['j']['dfs'][0])
+    '''
     #test dataframe_splitter
     for df in dataframe_generator(root,filenames):
         #print(len(dataframe_splitter(df)))
@@ -444,7 +467,7 @@ if __name__=='__main__':
             for id,df in zip(final_ids,final_dfs):
                 print('id and corresponding dataframe ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::;')
                 print(id)
-                print(len(df))
+                print(df.head(2))
             
             
             
@@ -461,6 +484,7 @@ if __name__=='__main__':
         #parser.big_standard(dfs['h'],extra_setting=1)
         #parser.big_standard(dfs['j'],extra_setting=2)
         #parser.big_standard(dfs['js'],extra_setting=3)
+        '''
         
         
 #1부터 20을 준다   

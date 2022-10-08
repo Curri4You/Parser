@@ -1,7 +1,6 @@
 import pandas as pd
 
 #give dataframes of csv files [generator]
-filenames=['20sabo_xls.csv','20comgong_xls.csv']
 def dataframe_generator(root,filenames):
     for file in filenames:
         df= pd.read_csv(root+file,header=None)
@@ -51,6 +50,7 @@ if __name__=='__main__':
     '''for df in dataframe_generator(root,filenames):
         print(df.size)'''
         
+    filenames=['20sabo_xls.csv','20comgong_xls.csv']
     #test dataframe_splitter
     for df in dataframe_generator(root,filenames):
         #print(len(dataframe_splitter(df)))
