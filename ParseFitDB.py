@@ -113,11 +113,15 @@ def all_df(dfs):
     
     return pd.concat(df_list,axis=0)
 
-def save_courselist(df,filename):
+def save_courselist(df,filename,filetype=0):
     #flush it in csv
     #flush it in json
     #just yield 
-    return df.to_json('data\\course\\'+filename)
+    if filetype==0:
+        df.to_json('data\\course\\'+filename)
+    elif filetype==1:
+        df.to_csv('data\\course\\'+filename)
+    
 def courseDB(all_curriculum):
     #목적: json파일로
     #all_curriculum: list of parser resultdict 
@@ -149,15 +153,20 @@ def courseDB(all_curriculum):
         
         #print(df.columns)
         tmp=df.iloc[:,[course_id_index,subject_id_index,credit_index,course_name_index]]
-        tmp.rename(columns={course_id_index:'course_id',subject_id_index:'subject_id',credit_index:'credit',course_name_index:'course_name'},inplace=True)
+        prev_cols=tmp.columns
+        new_cols=['course_id','subject_id','credit','course_name']
+        rename_dict={p:n for p,n in zip(prev_cols,new_cols)}
+        tmp=tmp.rename(columns=rename_dict)
+        #tmp.rename(columns={course_id_index:'course_id',subject_id_index:'subject_id',credit_index:'credit',course_name_index:'course_name'},inplace=True)
         print(tmp)
         #씨발 왜 하나만 되는 거야 
         tmp['subject_id']=tmp['subject_id'].map(find_subject_id)
         
         
         #turn anme into filename
-        filename=last+'.json'
-        save_courselist(tmp,filename)
+        #filename=last+'.json'
+        filename=last+'.txt'
+        save_courselist(tmp,filename,1)
     
     with open('course_json_filename.txt','a') as f:
         f.write(last)
