@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from ParseCoursebyType import *
 from collections import deque
-
+import os
 
 '''
     USER_TABLE
@@ -47,9 +47,12 @@ def allmajorDB(all_curriculum):
         f=open('allmajor_filename.txt','r')
         last=deque(f,1)[0]
         f.close()
-    except:
         f=open('allmajor_filename.txt','a')
-        last='\n0'
+        f.write('\n'+str(int(last)+1))
+        f.close()
+    except:
+        f=open('allmajor_filename.txt','w')
+        last='\n1'
         f.write(last)
         f.close()
     
@@ -72,7 +75,7 @@ def allmajorDB(all_curriculum):
     last=str(int(last)+1)
     print(allmajor_df)
     filename='data\\major\\'+last+'.txt'
-    allmajor_df.to_csv(filename)
+    allmajor_df.to_csv(filename,index=False,header=False)
 '''   
     COURSE
     
@@ -124,7 +127,12 @@ def save_courselist(df,filename,filetype=0):
         df.to_json('data\\course\\'+filename,index=False)
     elif filetype==1:
         df.to_csv('data\\course\\'+filename,index=False)
-    
+
+def renew_open(a):
+    if a=='Y':
+        return 1
+    else:
+        return 0
 def courseDB(all_curriculum):
     #목적: json파일로
     #all_curriculum: list of parser resultdict 
@@ -132,12 +140,78 @@ def courseDB(all_curriculum):
     #track filename
     last=-1
     try:
-        f=open('course_json_filename.txt','r')
+        f=open('course_filename.txt','r')
         last=deque(f,1)[0]
         f.close()
+        f=open('course_filename.txt','a')
+        f.write('\n'+str(int(last)+1))
+        f.close()
     except:
-        f=open('course_json_filename.txt','a')
-        last='\n0'
+        f=open('course_filename.txt','w')
+        last='\n1'
+        f.write(last)
+        f.close()
+    
+    #get data
+    for curriculum in all_curriculum:
+        #update name
+        last=str(int(last)+1)
+        
+        df=all_df(curriculum)#dict 내 수업 df를 다 합침
+        cols,indices=curriculum['nav']#key가 있는 indices
+        
+        subject_id_index=indices[cols.index('개설학과')]-2
+        credit_index=indices[cols.index('학점')]-2
+        course_name_index=indices[cols.index('교과목명')]-2
+        course_id_index=indices[0]-2
+        is_open_index=indices[-2]-2
+        
+        #print(df.columns)
+        tmp=df.iloc[:,[course_id_index,subject_id_index,is_open_index,credit_index,course_name_index]]
+        prev_cols=tmp.columns
+        new_cols=['course_id','subject_id','is_open','credit','course_name']
+        rename_dict={p:n for p,n in zip(prev_cols,new_cols)}
+        tmp=tmp.rename(columns=rename_dict)
+        
+        tmp['is_open']=tmp['is_open'].apply(renew_open)
+        #tmp.rename(columns={course_id_index:'course_id',subject_id_index:'subject_id',credit_index:'credit',course_name_index:'course_name'},inplace=True)
+        print(tmp)
+        tmp['subject_id']=tmp['subject_id'].map(find_subject_id)
+        
+        
+        #turn anme into filename
+        #filename=last+'.json'
+        filename=last+'.txt'
+        #save_courselist(tmp,filename,1)
+    
+    with open('course_json_filename.txt','a') as f:
+        f.write(last)
+        
+        
+'''   
+    PREVIOUS_SUBJECT_LIST
+    
+    ################
+    모든 COURSE 정보를 긁어와야하므로, 모든 CURRICULUM을 종합해서 만들어야 한다. 
+    ################
+    필요한 것:course_id(학수번호) *, 선수과목 리스트 (-로 구분)
+'''       
+def prevlistDB(all_curriculum):
+    #목적: json파일로
+    #all_curriculum: list of parser resultdict 
+    
+    #track filename
+    last=-1
+    try:
+        f=open('prevlist_filename.txt','r')
+        last=deque(f,1)[0]
+        f.close()
+        f=open('prevlist_filename.txt','a')
+        f.write('\n'+str(int(last)+1))
+        f.close()
+    except:
+        f=open('prevlist_filename.txt','w')
+        last='\n1'
         f.write(last)
         f.close()
     
@@ -174,17 +248,20 @@ def courseDB(all_curriculum):
     with open('course_json_filename.txt','a') as f:
         f.write(last)
         
-        
-        
-
+      
     
 
 if __name__=='__main__':
     
     sample_path='content/gdrive/MyDrive/competition_data/curri/h_json.json'
     
-    filenames=['20sabo_xls.csv','20comgong_xls.csv']   
     root='.\\content\\gdrive\\MyDrive\\competition_data\\curri\\'
+
+    f=os.walk(root) 
+    filenames=[] 
+    for k in f:
+        filenames=k[-1]
+    print(filenames)
     result= run_parser(root,filenames)
     
     resultdicts=[]
@@ -192,11 +269,12 @@ if __name__=='__main__':
         resultdicts.append(resultdict)
         for choice in ['g','h','j','js']:
             chosen=resultdict[choice]
+            #print(chosen)
             #print(chosen.keys())
             #print(chosen['dfs'])
         
     allmajorDB(resultdicts)
-    courseDB(resultdicts)
+    #courseDB(resultdicts)
     #check json
     
     #print(pd.read_json('data\\major\\1.json'))

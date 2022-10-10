@@ -1,5 +1,5 @@
 import pandas as pd
-
+import os
 #give dataframes of csv files [generator]
 def dataframe_generator(root,filenames):
     for file in filenames:
@@ -20,43 +20,52 @@ df2=df.iloc[jg_index:j_index]#전공기초
 df3=df.iloc[j_index:g_index]#[교과과정안내]
 '''
 def dataframe_splitter(df):
-    print('\n\nDf being splitted ::::::::::::::::::::\n\n')
+    #print('\n\nDf being splitted ::::::::::::::::::::\n\n')
 
     
     #index column 제외
     df=df.iloc[:,1:].copy()
     
-    #print(df.columns)
-    #index 식별
-    nav_index=df[df.iloc[:,0]=='기초교양'].index.to_list()[0]
-    a_index=nav_index
-    h_index=df[df.iloc[:,0]=='핵심교양'].index.to_list()[0]
-    jg_index=df[df.iloc[:,0]=='전공기초'].index.to_list()[0]
-    j_index=df[df.iloc[:,0]=='전공'].index.to_list()[0]
-    g_index=df[df.iloc[:,0]=='[교과과정안내]'].index.to_list()[0]
-    #print(a_index,'\t',h_index,'\t',jg_index,'\t',j_index,'\t',g_index)
-    #df split
-    nav=df.iloc[:a_index]
-    df0=df.iloc[a_index:h_index]#기초교양
-    df1=df.iloc[h_index:jg_index] #핵심교양
-    df2=df.iloc[jg_index:j_index]#전공기초
-    df3=df.iloc[j_index:g_index]#전공
-    df4=df.iloc[g_index:]#교과과정
-    return {'nav':nav,'g':df0,'h':df1,'j':df2,'js':df3,'gyo':df4}
-
+    #뭔가 들어있는 것만 빼기
+    ids=[]
+    rows=[]
+    for id,row in enumerate(df.iloc[:,0]):
+        if isinstance(row,str):
+            ids.append(id)
+            rows.append(row)
+    start=rows.index('구분')
+    end=rows.index('[교과과정안내]')
+    nav_index=ids[start]
+    gyo_index=ids[end]
+    
+    result={'currid':rows[0][:-9],'year':rows[1][:4],'info':rows[2],'bef':df.iloc[0:start],'nav':df.iloc[nav_index],'gyo':df.iloc[gyo_index:-1]}
+    #print(rows[0][:-9],'AAAAAAHHHHHH')
+    name_index=0
+    
+    for id in range(start+1,end):
+        slice_start=ids[id]
+        slice_end=ids[id+1]
+        
+        try:
+            tmp=df.iloc[slice_start:slice_end]
+        except:
+            tmp=df.iloc[slice_start:gyo_index]
+        result['df'+str(name_index)]=tmp
+        name_index+=1
+    
+    return result
+   
+   
 if __name__=='__main__':
     #test dataframe_generator
     root='.\\content\\gdrive\\MyDrive\\competition_data\\curri\\'
-    '''for df in dataframe_generator(root,filenames):
-        print(df.size)'''
-        
-    filenames=['20sabo_xls.csv','20comgong_xls.csv']
+
+    
+    f=os.walk(root)
+    filenames=[]
+    for k in f:
+        filenames=k[-1]
     #test dataframe_splitter
     for df in dataframe_generator(root,filenames):
-        #print(len(dataframe_splitter(df)))
-        print('\n\nchecking...:::::::::::::::::::::::::::::::\n',df[df.iloc[:,1]=='기초교양'].index.to_list()[0])
-        for i,d in enumerate(dataframe_splitter(df).values()):
-            if i==0:
-                print(d)
-            #print(':::::::::::::::::::\n',d[1].value_counts())
+        print(len(dataframe_splitter(df)))
 #1부터 20을 준다   

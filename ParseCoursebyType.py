@@ -170,10 +170,21 @@ class ParseCoursebyType:
                     new_big_standard.append(new_standard)
                     
             elif extra_setting==1:#h
-                #print('::::::::::::::::big standard, 1 activated')
                 for standard in bigstandard:
-                    
                     new_standard=standard[:-2]#leave out 'Y'
+                    print(':::::::::::',new_standard)
+                    for element in standard:
+                        if '이수' in element:
+                            try:
+                                tmp=leave_empty(list(set(re.findall('[0-9]*',element))))
+                                #print(tmp,':::::::::::::::::::::')
+                                new_standard.append(tmp)
+                            except:
+                                print('this document does not consist two bare minimum credits')
+                                new_standard.append('-1')
+                            
+                        else:
+                            new_standard.append(element.strip(' '))
                     
                     new_standard.append('-1')
                     new_big_standard.append(new_standard)
@@ -441,8 +452,8 @@ if __name__=='__main__':
     for result in resultdict:
         print(result['general_info'])
         print(result['nav'])
-        print(result['g']['dfs'][0])
-        print(result['j']['dfs'][0])
+        print(result['h']['dfs'])
+        print(result['js']['dfs'])
     '''
     #test dataframe_splitter
     for df in dataframe_generator(root,filenames):
