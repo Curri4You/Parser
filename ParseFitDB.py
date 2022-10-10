@@ -53,23 +53,25 @@ def allmajorDB(all_curriculum):
         f.write(last)
         f.close()
     
-    allmajor_df=pd.DataFrame(columns=['major_id','university_name','college_name','major_name'])
+    allmajor_df=[]
     
     
     for curriculum in all_curriculum:
         general_info=curriculum['general_info']
-        
-        major_id=find_subject_id(general_info['div'])
+        #print(general_info)
+        subject_id=find_subject_id(general_info['div'])
         university_name='이화여자대학교'
         college_name=general_info['college']
         major_name=general_info['div']
         
-        new_df=pd.DataFrame([[major_id,university_name,college_name,major_name]],columns=['major_id','university_name','college_name','major_name'])
+        new_df=[subject_id,university_name,college_name,major_name]
+        #print(new_df)
         allmajor_df.append(new_df)
-    
+    allmajor_df=pd.DataFrame(allmajor_df,columns=['subject_id','university_name','college_name','major_name'])
     last=str(int(last)+1)
-    filename='data\\major\\'+last+'.json'
-    allmajor_df.to_json(filename)
+    print(allmajor_df)
+    filename='data\\major\\'+last+'.txt'
+    allmajor_df.to_csv(filename)
 '''   
     COURSE
     
@@ -91,9 +93,9 @@ def find_subject_id(name):
         retrieval=file[file['subject_name']==name]
         
         if len(retrieval)>0:
-            return retrieval['subject_id']
+            return int(retrieval['subject_id'])
         else:
-            new_id= file['subject_id'].iloc[-1]+1
+            new_id= int(file['subject_id'].iloc[-1]+1)
             new_row=pd.DataFrame([[name,new_id]],columns=['subject_name','subject_id'])
             file.append(new_row)
             file.to_csv('subject_id.csv')
@@ -192,10 +194,10 @@ if __name__=='__main__':
             #print(chosen.keys())
             #print(chosen['dfs'])
         
-    #allmajorDB(resultdicts)
-    courseDB(resultdicts)
+    allmajorDB(resultdicts)
+    #courseDB(resultdicts)
     #check json
     
-    print(pd.read_json('data\\major\\1.json'))
-    print(pd.read_json('data\\course\\3.json'))
+    #print(pd.read_json('data\\major\\1.json'))
+    #print(pd.read_json('data\\course\\3.json'))
         
