@@ -73,16 +73,44 @@ def find_index(df,col,sign):
         if isinstance(t,str):
             if sign in t:
                 _index.append(i)
-    print(_index)
+                
     return _index
 class ParseCoursebyType:
     def __init__(self,outpath,resultdict):
         self.outpath=outpath
         self.d=resultdict
         self.df_by_ids={}
+        self.nav_for_standards=['flag']
     
     #out of run
-    
+    def pretty_standard_bynav(self,standard,swhere):
+        nav=list(self.d['nav'])
+        finalstandard={}
+        for val,key in zip(standard,swhere):
+            tmp=val
+            tmp=tmp.strip(' ')
+            tmp=re.sub('\n','',tmp)
+            
+            if '학수번호' in nav[key]:
+                finalstandard['구분2']=tmp
+            elif '교과목명' in nav[key]:
+                #print(tmp)
+                nums=re.findall('[0-9]+',tmp)
+                if '전공' in tmp:
+                    tmp_splitted=tmp.split('/')
+                    finalstandard['심화']=nums[0]
+                    finalstandard['복수']=nums[1]
+
+                elif len(nums)>=2:
+                    words=tmp.split(' ')
+                    finalstandard[words[0][-2:0]]=nums[0]
+                    finalstandard['credit']=nums[1]
+                elif len(nums)==1:
+                    finalstandard['credit']=nums[0]
+                
+            else:
+            	finalstandard[re.sub('[\n]','',nav[key])]=tmp
+        return finalstandard
     def bar(self,ser):#input: a series 
         keys=[]
         key_indices=[]
@@ -158,8 +186,12 @@ class ParseCoursebyType:
         standards=[]
         for i in range(len(mid_standard_index)):
             #get standard
-            mid_standard=self.bar(tmps.iloc[mid_standard_index[i]])[0] #list 
-            standards.append(mid_standard)
+            mid_standard,swhere=self.bar(tmps.iloc[mid_standard_index[i]]) #list 
+
+            
+            #pretty a standard
+            mid_standard=self.pretty_standard_bynav(mid_standard,swhere)#becomes dictionary
+            standards.append(mid_standard)            
             
             #slice
             start=mid_standard_index[i]
@@ -197,7 +229,8 @@ class ParseCoursebyType:
         rets=[]
         standards=[]
         for i,d in enumerate(dfs):
-            mid_standard,_=self.bar(tmps.iloc[mid_standard_index[i]])
+            mid_standard,mswhere=self.bar(tmps.iloc[mid_standard_index[i]])
+            mid_standard=self.pretty_standard_bynav(mid_standard,mswhere)#becomes dictionary
             standards.append(mid_standard)
             if depth(d,col=1)==1:
                 small_standard,ret_small=self.small_only(id,d,mid=i)
@@ -220,7 +253,10 @@ class ParseCoursebyType:
         standards=[]
         for i in range(len(small_standard_index)):
             #get standard
-            small_standard=self.bar(tmps.iloc[small_standard_index[i]])[0] #list 
+            small_standard,swhere=self.bar(tmps.iloc[small_standard_index[i]]) #list 
+            
+            #pretty standard
+            small_standard=self.pretty_standard_bynav(small_standard,swhere)#becomes dictionary
             standards.append(small_standard)
             #slice
             start=small_standard_index[i]
@@ -245,7 +281,7 @@ class ParseCoursebyType:
         #big standard가 있는 위치를 찾는다.
         tmp=df.copy()
 
-        bigstandard=self.bar(df.iloc[0])[0] #list 
+        bigstandard,swhere=self.bar(df.iloc[0]) #list 
         #확인
         #print(':::::::::::::::::::::::',bigstandard)
         
@@ -256,7 +292,7 @@ class ParseCoursebyType:
         #경우에 따라 파싱    
         #잘라주기
         tmp=tmp.iloc[1:]
-        standards=[bigstandard]
+        standards=[self.pretty_standard_bynav(bigstandard,swhere)]
         if deep==0:
             ret_df={id+'-0-0':tmp}
         elif deep==1: #small df들이 있음 
@@ -272,7 +308,7 @@ class ParseCoursebyType:
             print('Miss, your extra setting is a little weird:',deep)
 		
         #print(new_big_standard)
-        return  flattenlist(standards),ret_df
+        return  standards,ret_df
 
       
       
