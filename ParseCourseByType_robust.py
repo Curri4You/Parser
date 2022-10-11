@@ -65,7 +65,17 @@ def depth(example,col):
         return 1
     else:
         return 0 
-
+def bar(ser):#input: a series 
+	keys=[]
+	key_indices=[]
+	
+	for index,i in enumerate(ser):
+		if isinstance(i,str):
+			keys.append(re.sub('[\n\[\]#]','',i))
+			key_indices.append(index)
+			
+	#print('::::::::YOUR BARS FOR YOUR CURRICULUM',keys)   
+	return keys,key_indices
 def find_index(df,col,sign):
     tmps=df.copy()
     _index=[]
@@ -111,17 +121,7 @@ class ParseCoursebyType:
             else:
             	finalstandard[re.sub('[\n]','',nav[key])]=tmp
         return finalstandard
-    def bar(self,ser):#input: a series 
-        keys=[]
-        key_indices=[]
-        
-        for index,i in enumerate(ser):
-            if isinstance(i,str):
-                keys.append(re.sub('[\n\[\]#]','',i))
-                key_indices.append(index)
-                
-        #print('::::::::YOUR BARS FOR YOUR CURRICULUM',keys)   
-        return keys,key_indices
+
     def general_info(self):#done!
         df=self.d['bef']
         gen={}
@@ -160,15 +160,14 @@ class ParseCoursebyType:
         else:
             print('Something is not right with your general information:',belongto)
             return -1
-        #general_info: {curri ID, year, 대학, 학부, 전공, 구분,}
-        gen['year']=year 
-        gen['curr_id']=currid 
+        #general_info: { 대학, 학부, 전공, 구분,}
+        #print(gen)
         return gen
     def nav(self): #done!
         #구분제외
         #nav:  n개의 bar 항목
         #columns: '구분' 행에 있는 것들
-        keys,key_indices=self.bar(self.d['nav'])
+        keys,key_indices=bar(self.d['nav'])
         
         return keys[1:],key_indices[1:]
     
@@ -186,7 +185,7 @@ class ParseCoursebyType:
         standards=[]
         for i in range(len(mid_standard_index)):
             #get standard
-            mid_standard,swhere=self.bar(tmps.iloc[mid_standard_index[i]]) #list 
+            mid_standard,swhere=bar(tmps.iloc[mid_standard_index[i]]) #list 
 
             
             #pretty a standard
@@ -229,7 +228,7 @@ class ParseCoursebyType:
         rets=[]
         standards=[]
         for i,d in enumerate(dfs):
-            mid_standard,mswhere=self.bar(tmps.iloc[mid_standard_index[i]])
+            mid_standard,mswhere=bar(tmps.iloc[mid_standard_index[i]])
             mid_standard=self.pretty_standard_bynav(mid_standard,mswhere)#becomes dictionary
             standards.append(mid_standard)
             if depth(d,col=1)==1:
@@ -253,7 +252,7 @@ class ParseCoursebyType:
         standards=[]
         for i in range(len(small_standard_index)):
             #get standard
-            small_standard,swhere=self.bar(tmps.iloc[small_standard_index[i]]) #list 
+            small_standard,swhere=bar(tmps.iloc[small_standard_index[i]]) #list 
             
             #pretty standard
             small_standard=self.pretty_standard_bynav(small_standard,swhere)#becomes dictionary
@@ -281,7 +280,7 @@ class ParseCoursebyType:
         #big standard가 있는 위치를 찾는다.
         tmp=df.copy()
 
-        bigstandard,swhere=self.bar(df.iloc[0]) #list 
+        bigstandard,swhere=bar(df.iloc[0]) #list 
         #확인
         #print(':::::::::::::::::::::::',bigstandard)
         
@@ -310,6 +309,22 @@ class ParseCoursebyType:
         #print(new_big_standard)
         return  standards,ret_df
 
+def run_parser(resultdict):
+    
+	parser=ParseCoursebyType('testoutput',resultdict)
+	
+	i=1
+	newresultdict={'elec_num':resultdict['elec_num'],'nav':resultdict['nav'],'currid':resultdict['currid'],'year':resultdict['year']}
+	for key in newresultdict.keys():
+		if 'df' in key:
+			s,k=parser.run(newresultdict[key],id=str(i))
+			newresultdict[key]=(s,k)
+	newresultdict['general_info']=parser.general_info()
+	return newresultdict
+        
+   
+            
+            
       
       
 if __name__=='__main__':
@@ -327,15 +342,13 @@ if __name__=='__main__':
 	
         #{'nav','gyo','df0'...'df6'}
         result=dataframe_splitter(df)#dfs는 dictionary다. 
-        parser=ParseCoursebyType('testoutput',result)
-        
-        i=1
-        for key in result.keys():
-            if 'df' in key:
-                s,k=parser.run(result[key],id=str(i))
-                #print(k.keys())
-                print(s)
-                i+=1
+        print(result['nav'])
+        resultnew=run_parser(result)
+        #print(resultnew.keys())
+        for k,v in resultnew.items():
+            if 'df' in k:
+                s,dd=v 
+                #print(type(s),type(dd))
         
    
             

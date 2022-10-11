@@ -38,7 +38,7 @@ def dataframe_splitter(df):
     nav_index=ids[start]
     gyo_index=ids[end]
     
-    result={'currid':rows[0][:-9],'year':rows[1][:4],'info':rows[2],'bef':df.iloc[0:start],'nav':df.iloc[nav_index],'gyo':df.iloc[gyo_index:-1]}
+    result={'elec_num':rows[3],'currid':rows[0][:-9],'year':rows[1][:4],'info':rows[2],'bef':df.iloc[0:start],'nav':df.iloc[nav_index],'gyo':df.iloc[gyo_index:-1]}
     #print(rows[0][:-9],'AAAAAAHHHHHH')
     name_index=0
     

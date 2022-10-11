@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 from ParseCoursebyType import *
 from collections import deque
-import os
+
 
 '''
     USER_TABLE
@@ -255,13 +255,8 @@ if __name__=='__main__':
     
     sample_path='content/gdrive/MyDrive/competition_data/curri/h_json.json'
     
+    filenames=['20sabo_xls.csv','20comgong_xls.csv']   
     root='.\\content\\gdrive\\MyDrive\\competition_data\\curri\\'
-
-    f=os.walk(root) 
-    filenames=[] 
-    for k in f:
-        filenames=k[-1]
-    print(filenames)
     result= run_parser(root,filenames)
     
     resultdicts=[]
@@ -269,7 +264,7 @@ if __name__=='__main__':
         resultdicts.append(resultdict)
         for choice in ['g','h','j','js']:
             chosen=resultdict[choice]
-            #print(chosen)
+            print(chosen)
             #print(chosen.keys())
             #print(chosen['dfs'])
         
