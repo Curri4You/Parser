@@ -34,22 +34,20 @@ def find_subject_id(name):
     
     
 def all_df(curriculum):
-    
+    #하나의 curriculum에 대해 curriculum dictionary를 합쳐준다.
     dfkeys=[]
     for k in curriculum.keys():
         if 'df' in k:
             dfkeys.append(k)
             
     dfs=[]
-    ss=[]
     for dfkey in dfkeys:
         s,dfd= curriculum[dfkey]
         for k,v in dfd.items():
             dfs.append(v)
-        ss.append(s)
     tmp_df=pd.concat(dfs,axis=0)
     
-    return ss,tmp_df.copy()
+    return tmp_df.copy()
 
 def save_courselist(df,filename,filetype=0):
     #flush it in csv
@@ -78,36 +76,42 @@ def get_gyo(standards):
     
     
 class ParseFitDB:
-    def __init__(self):
+    def __init__(self,resultdicts):
         self.tracker='curriculum_filename.txt'
-    def get_curriculum(resultdict):
+        self.resultdict=resultdicts
+    def get_curriculum(self):
         
         '''curr_id[PK], the_year, (기준 년도), subject_id[FK], 전공이 무엇인지,
         major_division, (주복부전, 심화 구분), 주/복/부, elec_num, 
         전선 필수 학점, ge_info, 필교 학점
         '''
         #general_info{'college': '엘텍공과대학', 'div': ' 소프트웨어학부', 'subject_name': ' 컴퓨터공학', 'type': 1}
-        subject_id=find_subject_id(resultdict['general_info'])#not defined
-        major_division=resultdict['general_info']['type']
+        subject_id=find_subject_id(self.resultdict['general_info'])#not defined
+        major_division=self.resultdict['general_info']['type']
         elec_num=None#get_jeon(resultdict)#not defined  -->sould be defined with dfs
         ge_info=None#resultdict['elec_num']-elec_num -->should be defined with dfs
         
-        newresultdict={'curr_id':resultdict['currid'],'the_year':resultdict['year'],'subject_id':subject_id,'major_division':major_division,'elec_num':elec_num,'ge_info':ge_info}
+        newresultdict={'curr_id':self.resultdict['currid'],'the_year':self.resultdict['year'],'subject_id':subject_id,'major_division':major_division,'elec_num':elec_num,'ge_info':ge_info}
         
         return newresultdict
-    def get_course_prev(nav,tmp_df):#one big df
+    def get_course_prev(self,tmp_df):#one big df
+        
+        #tmp_df 여러개의 curriculum에 대해 모든 course를 합친 것
+    
         #column 명 찾기 
-        cols,indices=bar(nav)#그냥 그 행 
+        
+        vals,val_indices=bar(nav,cols)#그냥 그 행 
         
         
         
-        subject_id_index=indices[cols.index('개설학과')]#-2
-        credit_index=indices[cols.index('학점')]#-2
-        course_name_index=indices[cols.index('교과목명')]#-2
-        course_id_index=indices[0]#-2
-        is_open_index=indices[-2]#-2
+        subject_id_index=val_indices[vals.index('개설학과')]#-2
+        credit_index=val_indices[vals.index('학점')]#-2
+        course_name_index=val_indices[vals.index('교과목명')]#-2
+        course_id_index=val_indices[0]#-2
+        is_open_index=val_indices[-2]#-2
         
-        #print(df.columns)
+        
+        print('inside get_course_prev:::::\n',df.columns,'\n',df.head(1))
         tmp=tmp_df.iloc[:,[course_id_index,subject_id_index,is_open_index,credit_index,course_name_index]]
         prev_cols=tmp.columns
         new_cols=['course_id','subject_id','is_open','credit','course_name']
@@ -123,13 +127,14 @@ class ParseFitDB:
         prev_df=None
         return course_df, prev_df
         
-    def get_prevlist(tmp_df):
+    def get_prevlist(self,tmp_df):
         pass
-    def get_major(curriculum):
+    def get_major(self,curriculum):
         pass
-    def run(self,all_curriculum):
+    def run(self):
         #목적: json파일로
         #all_curriculum: list of parser resultdict 
+        all_curriculum=self.resultdict #list of resultdicts 
         
         #track filename
         last=-1
@@ -150,11 +155,16 @@ class ParseFitDB:
         curriculumDB=[]
         majorDB=[]
         prevlistDB=[]
+        
+        
         for curriculum in all_curriculum:#(['nav', 'currid', 'year', 'df0', 'df1', 'df2', 'df3', 'df4', 'df5', 'df6', 'general_info'])   
-            nav=curriculum['nav']
+            cols=list(curriculum['df0'][1].values())[0].columns
+            #print('cols type',type(cols[0])) 잘 나왔어
+            self.nav,self.nav_swhere=bar(curriculum['nav'],cols) #this thing is raw 
             
-            #몇 번째 교과과정표인가
-            last=curriculum['currid']+curriculum['year']
+            #몇 번째 교과과정표인가(잘 나옴)
+            curr_id=curriculum['currid']+curriculum['year']
+            
             
             #교과과정표
             #curriculumDB.append(self.get_curriculum(curriculum))#리스트
@@ -163,12 +173,14 @@ class ParseFitDB:
             #majorDB.append(self.get_major(curriculum))#리스트
             
             #course & prevlist
-            ss,tmp_df=all_df(curriculum)
-            print(len(ss),len(tmp_df))
-            courses,prevlist=self.get_course(nav,tmp_df)
-    
-            #courseDB.append(courses)
-            #prevlistDB.append(prevlist)
+            tmp_df=all_df(curriculum)
+            courseDB.append(tmp_df)
+            #print(len(ss),len(tmp_df),tmp_df.columns) 잘 나왔어 
+        
+        courses,prevlist=self.get_course_prev(pd.concat(courseDB,axis=0))
+        print(len(courses))
+
+            
 
         
         
@@ -238,17 +250,18 @@ if __name__=='__main__':
     for k in f:
         filenames=k[-1]
     
-    curriculums=[]
+    resultdicts=[]
     #test dataframe_splitter
     for df in dataframe_generator(root,filenames):
 	
         #{'nav','gyo','df0'...'df6'}
         result=dataframe_splitter(df)#dfs는 dictionary다. 
         resultnew=run_parser(result)
-        curriculums.append(resultnew)#[(s,df)]
+        resultdicts.append(resultnew)#[(s,df)]
+        print(resultnew.keys())
     
-    p=ParseFitDB()
-    p.run(curriculums)   
+    p=ParseFitDB(resultdicts)
+    p.run()   
     '''
     dict_keys(['nav', 'currid', 'year', 'df0', 'df1', 'df2', 'df3', 'df4', 'df5', 'df6', 'general_info'])
     'dfN'=(s,df)

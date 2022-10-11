@@ -45,6 +45,24 @@ output: {'college': 대학, 'div':학부, 'subject_name': 전공, 'type': 주복
 ### run(df )
 input:
 df / pandas.DataFrame / 
+### run_parser(resultdict)
+input: 
+resultdict / dicti /data_splitter의 결과
+
+output: 
+newresultdict / dict / 
+
+key
+'elec_num' / resultdict['elec_num']
+'nav' / resultdict['nav']
+'currid' / resultdict['currid']
+'year' / resultdict['year']
+'general_info' / parser.general_info() {'college': 대학, 'div':학부, 'subject_name': 전공, 'type': 주복부구분,}
+dfN: (standards, df_dict)
+/ standards  / list of finalstandard
+/ df_dift  / '1-1-1':df 
+
+
 
 ## Outside class
 ### flattenlist(nestedlist)

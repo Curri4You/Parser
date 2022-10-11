@@ -328,7 +328,7 @@ class ParseCoursebyType:
             s,ret_df=self.mid_only(id,tmp)
             standards.append(s)
         elif deep==3:
-            s,ret_df=self.mid_small(id,tmp) 
+            s,ret_df=self.mid_small(id,tmp)
             standards.append(s)
         else:
             print('Miss, your extra setting is a little weird:',deep)
