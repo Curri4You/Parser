@@ -44,11 +44,12 @@ def has_mid(a):
     return False
 def has_small(a):
     if isinstance(a,str):
-        if '#' in a or '[' in a:
+        if '#' in a:
             return True
     return False
 
 def depth(example,col):
+    lookout=example.iloc[:,col]
     if len(example[example.iloc[:,col].apply(has_mid)])>0:
         if len(example[example.iloc[:,col].apply(has_small)])>0:
             return 3
@@ -59,6 +60,20 @@ def depth(example,col):
     else:
         return 0 
 
+
+def depth_w_map(example,col):
+    lookout=example.iloc[:,col]
+    mid=any(map(has_mid,list(lookout)))
+    small=any(map(has_small,list(lookout)))
+    
+    if mid and small:
+        return 3
+    elif mid:
+        return 2
+    elif small:
+        return 1
+    else:
+        return 0
 #필요 없는 열은 제외하고, 필요한 열이 가지는 column이름만 반환한다
 #이 때 column 이름은 각 df (같은 커리큘럼에서는 같을 것이다.)를 참고한다. 
 def bar(ser,cols):#input: a series 
@@ -135,7 +150,7 @@ class ParseCoursebyType:
                     
                     
                     #심화와 복수 구분이 있는 경우
-                    nums=re.findall('[0-9]+',tmp_val)
+                    nums=re.findall('[0-9]+',s)
                     if '/' in tmp_val:
                         nums=s.split('/')
                         finalstandard['diff_by_div']=True #심화전공 여부
@@ -145,7 +160,7 @@ class ParseCoursebyType:
                     else: #없는 경우
                         finalstandard['diff_by_div']=False
                     
-                        if len(nums)>=2:
+                        if len(nums)>=2: #영역과 학점이 분리되어있는 경우 
                             words=tmp_val.split(' ')
                             the_word=words[0][-2:0]
                             finalstandard['credit']=nums[1]
@@ -155,7 +170,11 @@ class ParseCoursebyType:
                             elif '영역' in tmp_val:
                                 finalstandard['credittype']='section'
                                 finalstandard['section']=nums[0]
-                        elif len(nums)==1:
+                            else:
+                                finalstandard['credittype']='sector'
+                                finalstandard['sector']=nums[0]
+                        else:
+                            #print(s)
                             finalstandard['credit']=nums[0]
                             finalstandard['credittype']='whole'
                     
@@ -170,7 +189,8 @@ class ParseCoursebyType:
         return finalstandard #swhere
 
     def general_info(self):#done!
-        df=self.resultdict['bef']
+        
+        
         gen={}
         
         
@@ -236,6 +256,8 @@ class ParseCoursebyType:
     
     def mid_small(self,id,df):
         tmps=df.copy()
+        #잘 도착하고 있는 것 확인함
+        # print('MID AND SMALL\n',tmps)
         
         mid_standard_index=find_index(tmps,0,'-')
         
@@ -261,13 +283,17 @@ class ParseCoursebyType:
             mid_standard=self.pretty_standard_bynav(list(mid_raw))#becomes dictionary
             standards.append(mid_standard)
             
+
             #d 안에 small standard가 있다면
-            if depth(d,col=1)==1:
+            if depth_w_map(d,0)==1:
+                #print('found small',d)
                 small_standard,ret_small=self.small_only(id,d,mid=i+1)#big
                 rets.append(ret_small)          
                 standards.append(small_standard)  
             #없다면 
             else:
+                #print('mid small without small:,\n',d)
+            
                 newid=id+'-'+str(i+1)+'-0'
                 rets.append({newid:d})
                 
@@ -313,11 +339,14 @@ class ParseCoursebyType:
         
         #big standard에 맞춰서 df를 자른다.
         
-        deep=depth(df,1)
-        #print('::::::::::::::::depth;::::::::::::;;',deep)
         #경우에 따라 파싱    
         #'구분'잘라주기
-        tmp=tmp.iloc[:,1:]
+        #bigstandard 행 잘라주기
+        tmp=tmp.iloc[1:,1:]
+        
+        #판단하기
+        deep=depth(tmp,0)
+        #print('::::::::::::::::depth;::::::::::::;;',deep)
         standards=[bigstandard]
         if deep==0:
             ret_df={id+'-0-0':tmp}
@@ -338,7 +367,7 @@ class ParseCoursebyType:
 def run_parser(resultdict):
     parser=ParseCoursebyType('testoutput',resultdict)
     i=1
-    newresultdict={'elec_num':resultdict['elec_num'],'nav':resultdict['nav'],'currid':resultdict['currid'],'year':resultdict['year']}
+    newresultdict={'bef':resultdict['bef'],'nav':resultdict['nav'],'currid':resultdict['currid'],'year':resultdict['year']}
 
     for key in resultdict.keys():
         if 'df' in key:

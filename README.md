@@ -32,7 +32,9 @@ bar 함수를 통해서 얻던 standard를 key:value 쌍으로 이쁘게 바꾼 
 				'credit'
 		--> 'whole'(그냥)
 				'credit'
-
+		--> 'sector' 그냥 모르는 때 이렇게 넣음
+				'sector'
+				'credit
 ### general_info():
 output: {'college': 대학, 'div':학부, 'subject_name': 전공, 'type': 주복부구분,}
 (이때 주복부구분은 types={'주전공':1,'복수전공':2,'부전공':3,'연계전공':4} 참고)
@@ -53,7 +55,7 @@ output:
 newresultdict / dict / 
 
 key
-'elec_num' / resultdict['elec_num']
+'bef' / resultdict['bef']
 'nav' / resultdict['nav']
 'currid' / resultdict['currid']
 'year' / resultdict['year']

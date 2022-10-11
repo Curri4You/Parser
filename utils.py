@@ -6,7 +6,7 @@ def dataframe_generator(root,filenames):
         df= pd.read_csv(root+file,header=None)
         new_columns=[i for i in range(df.shape[-1])]
         df.columns=new_columns
-        print('CURRICULUM OPENS:::::::::::::::::\n',file)
+        #print('CURRICULUM OPENS:::::::::::::::::\n',file)
         yield df
 
 def dataframe_emptycol_drop(df):
@@ -36,9 +36,8 @@ def dataframe_splitter(df):
     start=rows.index('구분')
     end=rows.index('[교과과정안내]')
     nav_index=ids[start]
-    gyo_index=ids[end]
     
-    result={'elec_num':rows[3],'currid':rows[0][:-9],'year':rows[1][:4],'info':rows[2],'bef':df.iloc[0:start],'nav':df.iloc[nav_index],'gyo':df.iloc[gyo_index:-1]}
+    result={'elec_num':rows[3],'currid':rows[0][:-9],'year':rows[1][:4],'info':rows[2],'bef':df.iloc[0:start+3],'nav':df.iloc[nav_index]}
     #print(rows[0][:-9],'AAAAAAHHHHHH')
     name_index=0
     
