@@ -50,7 +50,11 @@ def dataframe_splitter(df):
             tmp=df.iloc[slice_start:slice_end]
         except:
             tmp=df.iloc[slice_start:gyo_index]
-        result['df'+str(name_index)]=tmp
+            
+        #string-fy columnnames 
+        newcols=map(str,list(tmp.columns))
+        tmp.columns=newcols 
+        result['df'+str(name_index)]=tmp #df0= dataframe with standards intact
         name_index+=1
     
     return result

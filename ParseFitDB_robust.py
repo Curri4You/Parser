@@ -10,7 +10,7 @@ import os
 
 def get_pilgyo(s,df):
     return 0
-def get_jeon(s.df):
+def get_jeon(s,df):
     return 0
 def find_subject_id(name):
     try:#파일이 열리면
@@ -41,13 +41,15 @@ def all_df(curriculum):
             dfkeys.append(k)
             
     dfs=[]
+    ss=[]
     for dfkey in dfkeys:
         s,dfd= curriculum[dfkey]
-        for k,v in dfd.items:
+        for k,v in dfd.items():
             dfs.append(v)
+        ss.append(s)
     tmp_df=pd.concat(dfs,axis=0)
     
-    return tmp_df.copy()
+    return ss,tmp_df.copy()
 
 def save_courselist(df,filename,filetype=0):
     #flush it in csv
@@ -63,9 +65,9 @@ def renew_open(a):
         return 1
     else:
         return 0
-def get_gyo(dfs):
+def get_gyo(standards):
     gyo=0
-    for s in dfs:
+    for s in standards:
         if s['필수여부']=='필수' and '전공' not in s['구분']:
             if isinstance(s['credit'],int):
                 gyo+=s['credit']
@@ -93,13 +95,11 @@ class ParseFitDB:
         newresultdict={'curr_id':resultdict['currid'],'the_year':resultdict['year'],'subject_id':subject_id,'major_division':major_division,'elec_num':elec_num,'ge_info':ge_info}
         
         return newresultdict
-    def get_course(tmp_df):
+    def get_course_prev(nav,tmp_df):#one big df
         #column 명 찾기 
-        cols,indices=bar(curriculum['nav'])#그냥 그 행 
-        #update name      
+        cols,indices=bar(nav)#그냥 그 행 
         
-    
-        cols,indices=curriculum['nav']#key가 있는 indices
+        
         
         subject_id_index=indices[cols.index('개설학과')]#-2
         credit_index=indices[cols.index('학점')]#-2
@@ -119,8 +119,10 @@ class ParseFitDB:
         print(tmp)
         tmp['subject_id']=tmp['subject_id'].map(find_subject_id)
         
+        course_df=None
+        prev_df=None
+        return course_df, prev_df
         
-        course_df.append(tmp)
     def get_prevlist(tmp_df):
         pass
     def get_major(curriculum):
@@ -149,22 +151,24 @@ class ParseFitDB:
         majorDB=[]
         prevlistDB=[]
         for curriculum in all_curriculum:#(['nav', 'currid', 'year', 'df0', 'df1', 'df2', 'df3', 'df4', 'df5', 'df6', 'general_info'])   
+            nav=curriculum['nav']
+            
             #몇 번째 교과과정표인가
             last=curriculum['currid']+curriculum['year']
             
             #교과과정표
-            curriculumDB.append(self.get_curriculum(curriculum))#리스트
+            #curriculumDB.append(self.get_curriculum(curriculum))#리스트
                   
             #major 
-            majorDB.append(self.get_major(curriculum))#리스트
+            #majorDB.append(self.get_major(curriculum))#리스트
             
             #course & prevlist
-            tmp_df=all_df(curriculum)
-            
-            courses,prevlist=self.get_course(tmp_df)
+            ss,tmp_df=all_df(curriculum)
+            print(len(ss),len(tmp_df))
+            courses,prevlist=self.get_course(nav,tmp_df)
     
-            courseDB.append(courses)
-            prevlistDB.append(prevlist)
+            #courseDB.append(courses)
+            #prevlistDB.append(prevlist)
 
         
         
@@ -242,7 +246,9 @@ if __name__=='__main__':
         result=dataframe_splitter(df)#dfs는 dictionary다. 
         resultnew=run_parser(result)
         curriculums.append(resultnew)#[(s,df)]
-        
+    
+    p=ParseFitDB()
+    p.run(curriculums)   
     '''
     dict_keys(['nav', 'currid', 'year', 'df0', 'df1', 'df2', 'df3', 'df4', 'df5', 'df6', 'general_info'])
     'dfN'=(s,df)
@@ -251,10 +257,4 @@ if __name__=='__main__':
     nav-->꼭 list 씌워줘야하는 series
 
     ''' 
-        
-  
-    allmajorDB(curriculums['general_info','year'])
-    courseDB(curriculums)
-    #check json
-    
         
