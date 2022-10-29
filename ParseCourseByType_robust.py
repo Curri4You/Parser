@@ -397,14 +397,27 @@ if __name__=='__main__':
 	
         #{'nav','gyo','df0'...'df6'}
         result=dataframe_splitter(df)#dfs는 dictionary다. 
+        
+        #{'bef','nav','currid','year','df0'...'df6','general_info'}
         resultnew=run_parser(result)
+        #print(resultnew.keys())
         
-        for k,v in resultnew.items():
-            if 'df' in k:
-                s,dd=v 
-                #print('\n\ninfo::::::::::;',s,dd.keys())
-                #print(type(s),type(dd))
+        #1~20
+        #print(resultnew['bef'].keys())
+        #currid, subject_name, college_name, elec_num,gyo_num 재료가 여기 있음
+        #print(resultnew['bef'])
         
-   
+        #1~20
+        #print(resultnew['nav'].keys())
+        #series
+        #nav 내용이 들어가있음
+        #print((resultnew['nav'].values))
+        
+        #dict_keys(['college', 'subject_name', 'type'])
+        #dict_keys(['college', 'div', 'subject_name', 'type'])
+        #print(resultnew['general_info'].keys())
+        
+        
+
             
             

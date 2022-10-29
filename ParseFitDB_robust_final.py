@@ -6,37 +6,6 @@ import os
 from utils import *
 import hashlib
 
-def new_subject_id(subject_name):
-    hashed_string = hashlib.sha256(subject_name.encode('utf-8')).hexdigest()
-    return hashed_string
-    
-   
-def subject_id_maker(subject_name):
-    try:
-        #파일 부르기
-        filename='test_subject_name_subject_id.csv'
-        f=pd.read_csv(filename)
-        #id 있는지 찾기
-        matched=f[f['subject_name']==subject_name]
-        #에러 방지
-        
-        if len(matched)==1:
-            return matched['subject_id'].values()
-        elif len(matched)>1:
-            print('more than one subject_id for same subject_name')
-
-        else:
-            subject_id=new_subject_id(subject_name)
-            new_row=pd.DataFrame([[subject_name,subject_id]],columns=['subject_name','subject_id'])
-            f=pd.concat((f,new_row))
-            f.to_csv(filename)
-            return subject_id            
-        
-    except:
-        subject_id=new_subject_id(subject_name)
-        f=pd.DataFrame([[subject_name,subject_id]],columns=['subject_name','subject_id'])
-        f.to_csv(filename)
-        return subject_id
 
 def decrement(a):
     return a-1
@@ -106,11 +75,6 @@ def parse_jolup_credit(df):
     
     
     #_nav _val 매칭 확인 -->확인됨
-    '''
-    if _nav==_val:
-        print('legitimate!')
-    else:
-        print('not legitimate')'''
     
     #make it a dict
     ret={}
@@ -124,28 +88,28 @@ class ParseFitDB:
     def alldf_per_resultdict(self,resultdict): #done!
         keys=resultdict.keys()
         dfkeys=[f for f in keys if 'df' in f]
-        
+        print(dfkeys)
         all_dfs=[]
         for dfkey in dfkeys:
             dfs=list(resultdict[dfkey][1].values()) #list of df
             all_dfs+=dfs 
         
         result_alldf= pd.concat(all_dfs,axis=0)
-        subject_ids=list(map(subject_id_maker,resultdict['general_info']['subject_name']))
-        return result_alldf, subject_ids
+        subject_name=resultdict['general_info']['subject_name']
+        return result_alldf, subject_name
     def alldf_all_resultdict(self): #done!
         
         dfs=[]
-        subject_idss=[]
+        subject_names=[]
         for resultdict in self.resultdicts:
-            df,subject_ids=self.alldf_per_resultdict(resultdict)
+            df,subject_name=self.alldf_per_resultdict(resultdict)
             
             #중복 없애지 않고 그냥 합치기
             dfs.append(df)
-            subject_idss+=subject_ids
+            subject_names+=[subject_name]
         alldfs=pd.concat(dfs,axis=0)
-        allsubject_ids=pd.DataFrame(subject_idss,columns=['subject_id'])
-        return alldfs,allsubject_ids
+        allsubject_names=pd.DataFrame(subject_names,columns=['subject_name'])
+        return alldfs,allsubject_names
 
     def check_all_nav_same(self):
         #nav들이 다 같은지 확인해줌
@@ -166,7 +130,8 @@ class ParseFitDB:
             print('하나의 데이터프레임으로 뭉치는 것도 안됨(column 수 다름)')
         return False
     def create_course_prev(self):
-        alldfs,subject_ids=self.alldf_all_resultdict() 
+        #df0~df6을 합치고, df마다 소속된 subject_name을 list로 반환중임
+        alldfs,subject_names=self.alldf_all_resultdict() 
         
         #중복제거 하지 말기 
         #nav부터 확인
@@ -185,9 +150,13 @@ class ParseFitDB:
         coursedb=coursedb.rename(columns=rename_columns)
       
         #prevDB::::
-        prevdb=coursedb[['영역명(학수번호)*:신설교과목','비고']].copy()
-        prevdb=prevdb.rename(columns={'영역명(학수번호)*:신설교과목':'course_id','비고':'prev_list'})
-        prevdb['prev_list']=prevdb['prev_list'].apply(prev_list_filtered)
+        prev_homo=coursedb[['영역명(학수번호)*:신설교과목','비고']].copy()
+        prev_homo=prev_homo.rename(columns={'영역명(학수번호)*:신설교과목':'course_id','비고':'bigo'})
+        bigo=prevdb['prev_list'].apply(prev_list_filtered)   
+        for i in list(bigo):
+            for j in str(i).split():
+                
+                
         #need work
         #prev_list중 [타]는 prevlist가 아닌 curri_course DB에 들어가야할 것 같음
         #prevDB:::: save
@@ -203,15 +172,14 @@ class ParseFitDB:
         #교과목명-->course_name
         #syllabus_id=None
         
-        #ourseDB:::: good!
+        #courseDB:::: good!
         selected_cols=['영역명(학수번호)*:신설교과목','2022학년2학기개설여부','학점','교과목명']
         selected=coursedb[selected_cols].copy()
         selected=selected.rename(columns={'영역명(학수번호)*:신설교과목':'course_id','2022학년2학기개설여부':'is_open','학점':'credit','교과목명':'course_name'})
         #**중요 
-        selected['subject_id']=subject_ids
         selected['syllabus_id']=[0]*len(selected)#pd.Series([0]*len(selected))
         
-        #ourseDB:::: filter and save
+        #courseDB:::: filter and save
         #is_open 0과 1로 바꿔주기
         #syllabus_id
         selected['is_open']=selected['is_open'].apply(is_open_filtered)
@@ -221,11 +189,13 @@ class ParseFitDB:
         selected.to_csv(self.outpath+'courseDB.txt',header=None,index=False)
         
     
+    #need work 
+    #major type 추가
     def create_allmajor(self):
         allmajor=[]
         for resultdict in self.resultdicts:
             '''
-            subject_id[PK]
+            subject_name[PK]
             (전공식별자)
             university_name
             (소속종합대학)
@@ -236,12 +206,12 @@ class ParseFitDB:
 
             '''
             gen_info=resultdict['general_info'] #college, division, subject_name,type
-            subject_id=subject_id_maker(gen_info['subject_name'])
+            major_division=gen_info['type']
             university_name='이화여자대학교'#수기! need work
             college_name=gen_info['college']
             major_name=gen_info['subject_name']
-            allmajor.append([subject_id,university_name,college_name,major_name])
-        allmajordf=pd.DataFrame(allmajor,columns=['subject_id','university_name','college_name','major_name'])
+            allmajor.append([major_division,university_name,college_name,major_name])
+        allmajordf=pd.DataFrame(allmajor,columns=['major_division','university_name','college_name','major_name'])
         
         print('\n\nALL MAJOR DB::::::::::\n',allmajordf.head(5))
         allmajordf.to_csv(self.outpath+'allmajorDB.txt',header=None,index=False)  
@@ -251,8 +221,8 @@ class ParseFitDB:
         
         #금방 구하는 것들
         curr_id=resultdict['currid']
+        subject_name=resultdict['general_info']['subject_name']
         the_year=resultdict['year']
-        subject_id=subject_id_maker(resultdict['general_info']['subject_name']) #need work
         major_division=resultdict['general_info']['type']
         
         #bef 파싱 해야 구하는 것들 
@@ -288,17 +258,16 @@ class ParseFitDB:
                             gyo_num+=int(s['credit'])
                     
             except:
-                
-                continue
+                print('필교학점이 존재하지 않습니다')
             
         
-        return {'curr_id':curr_id,'the_year':the_year,'subject_id':subject_id,'major_division':major_division,'elec_num':elec_num,'gyo_num':gyo_num}
+        return {'curr_id':curr_id,'the_year':the_year,'subject_name':subject_name,'major_division':major_division,'elec_num':elec_num,'gyo_num':gyo_num}
     def create_all_curriculum(self):
         '''
         curr_id[PK]
         the_year
         (기준 년도)
-        subject_id[FK]
+        subject_name
         전공이 무엇인지
         major_division
         (주복부전, 심화 구분)
@@ -368,7 +337,11 @@ if __name__=='__main__':
         resultdicts.append(resultnew)#[(s,df)]
     
     p=ParseFitDB(resultdicts,outpath)
+    _,subject_names=p.alldf_all_resultdict()
+    print(subject_names)
+    '''
     p.create_allmajor()
     p.create_course_prev()
     p.create_all_curriculum()
     p.create_curri_course()
+    '''
