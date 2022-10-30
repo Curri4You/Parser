@@ -16,8 +16,13 @@ def is_open_filtered(a):
     return 0 
 def syllabus_id_filtered(a):
     return 0
-
+def find_filled_element(li):
+    for l in li:
+        if len(l)!=0:
+            return l 
+    return '-1'
 def prev_list_filtered(a):
+    #한 개 course의 란에 대해 등장 
     if isinstance(a,str):
         #여러개인 경우
         courses=[]
@@ -34,7 +39,10 @@ def prev_list_filtered(a):
                 continue
             
             #아닐 경우
-            course_id=re.findall('[0-9]+',course)[0]
+            course_id=find_filled_element(re.findall('[0-9]+',course)) # findall 결과 중 비어있는 것이 등장하지 않도록
+            if course_id=='-1':
+                continue 
+            
             
             if '(재)' in course: #재수강 인정과목
                 if len(ret)==0:
@@ -51,7 +59,8 @@ def prev_list_filtered(a):
                     ret='[3]'+course_id
                 else:
                     ret+='-[3]'+course_id
-        return ret
+        if ret!='': #비어있는 상태로 끝나지 않으면
+            return ret
     return str(0)
 
 def isinstance_str(a):
@@ -81,6 +90,45 @@ def parse_jolup_credit(df):
     for n,v in zip(jolup_nav,jolup_val):
         ret[n]=v
     return ret
+def index_interpreter(all_indices): #[1-1-1,1-1-2,1-2-0,1-3-1] 각각의 standard list 내 위치 제공
+    standard_indices=[]
+    big_increment=1
+    mid_increment=0
+    tmp=0
+    for index,k in enumerate(all_indices):
+        _,mid,small=list(map(int,k.split('-')))
+        if mid==0 and small==0:# 1-0-0, 밖에 안됨
+            standard_indices.append(index)
+        elif mid==0 and small!=0:#1-0-1,1-0-2... 밖에 안됨
+            standard_indices.append(big_increment+index)
+        elif mid!=0:
+            if small==0: 
+                standard_indices.append(big_increment+mid_increment+index)
+            else:
+                if tmp!=mid:
+                    tmp=mid
+                    mid_increment+=1
+                standard_indices.append(big_increment+mid_increment+index)
+        else:
+            print('??')
+    return standard_indices
+
+def get_standard_name(st): #구분, 구분2 등 뭐가 있고 없을 수 있음 
+    #이름 분명히하기
+    keys=st.keys()
+    if '구분'in keys:
+        if '구분2' in keys:
+            name=st['구분']+'-'+'구분2'
+        else:
+            name=st['구분']
+    else:
+        if '구분2' in keys:
+            name=st['구분2'] 
+        else:
+            name=''
+            print('Something gone wrong, no standard name ') 
+    return name    
+    
 class ParseFitDB:
     def __init__(self,resultdicts,outpath):
         self.resultdicts=resultdicts
@@ -88,7 +136,8 @@ class ParseFitDB:
     def alldf_per_resultdict(self,resultdict): #done!
         keys=resultdict.keys()
         dfkeys=[f for f in keys if 'df' in f]
-        print(dfkeys)
+        #dfkeys 내용 확인하기 
+        # print(dfkeys)
         all_dfs=[]
         for dfkey in dfkeys:
             dfs=list(resultdict[dfkey][1].values()) #list of df
@@ -116,20 +165,22 @@ class ParseFitDB:
         
         navs=[]
         for resultdict in self.resultdicts:
-            nav,_=bar(resultdict['nav'],[i for i in range(0,len(list(resultdict['nav'])))])
+            nav,nav_swhere=bar(resultdict['nav'],[i for i in range(0,len(list(resultdict['nav'])))])
             nav.append(navs)
         try:
             navs=pd.DataFrame(navs)
             if len(navs.drop_duplicates())>1:
+                #error indicator
                 print(len(navs.drop_duplicates()))
-            else:
+            else: #다 중복이면 (원하는 결과)
                 self.nav=nav 
-                self.nav_swhere=_
+                self.nav_swhere=nav_swhere
                 return True
         except:
+            #error indicator
             print('하나의 데이터프레임으로 뭉치는 것도 안됨(column 수 다름)')
         return False
-    def create_course_prev(self):
+    def create_course_prev_homo_intersected(self):
         #df0~df6을 합치고, df마다 소속된 subject_name을 list로 반환중임
         alldfs,subject_names=self.alldf_all_resultdict() 
         
@@ -149,19 +200,57 @@ class ParseFitDB:
         rename_columns={k:v for k,v in zip(coursedb.columns,self.nav[1:])}
         coursedb=coursedb.rename(columns=rename_columns)
       
-        #prevDB::::
-        prev_homo=coursedb[['영역명(학수번호)*:신설교과목','비고']].copy()
-        prev_homo=prev_homo.rename(columns={'영역명(학수번호)*:신설교과목':'course_id','비고':'bigo'})
-        bigo=prevdb['prev_list'].apply(prev_list_filtered)   
-        for i in list(bigo):
-            for j in str(i).split():
-                
-                
-        #need work
-        #prev_list중 [타]는 prevlist가 아닌 curri_course DB에 들어가야할 것 같음
-        #prevDB:::: save
-        #print('\n\nPREVLIST DB:::::::::\n',prevdb.head(5))
-        #prevdb.to_csv(self.outpath+'prev_listDB.txt',index=False,header=None)
+        #prev, homo, intersected DB::::
+        prev_homo_intersected=coursedb[['영역명(학수번호)*:신설교과목','비고']].copy()
+        prev_homo_intersected=prev_homo_intersected.rename(columns={'영역명(학수번호)*:신설교과목':'course_id','비고':'bigo'})
+        bigo=prev_homo_intersected['bigo'].apply(prev_list_filtered)  
+        
+        
+        prevlist=[]
+        homolist=[]
+        intersectedlist=[]
+        for cid,i in zip(prev_homo_intersected['course_id'].tolist(), list(bigo)):
+            
+            if '-' in i: #여러개 있는 경우 
+                for  j in str(i).split('-'): 
+                    j_cid=j[3:]
+                    if '[1]' in j: 
+                        homolist.append((cid,j_cid))
+                    elif '[2]' in j:
+                        prevlist.append((cid,j_cid)) 
+                    elif '[3]' in j:
+                        intersectedlist.append((cid,j_cid)) 
+            else:#한 개 있는 경우
+                i_cid=i[3:]
+                if '[1]' in i: 
+                    homolist.append((cid,i_cid))
+                elif '[2]' in i:
+                    prevlist.append((cid,i_cid)) 
+                elif '[3]' in i:
+                    intersectedlist.append((cid,i_cid)) 
+                else:
+                    #다 0으로 잘 채워져있는 것 같다. 
+                    #print('bigo:',i)
+                    continue
+        #내용 확인       
+        #print(homolist,prevlist,intersectedlist) 
+          
+        if len(homolist)>0:
+            homodb=pd.DataFrame(homolist,columns=['course_id', 'homo_course_id']) 
+        else:
+            homodb=pd.DataFrame(homolist,columns=['course_id', 'homo_course_id'],index=[0]) 
+        if len(prevlist)>0:
+            prevdb=pd.DataFrame(prevlist,columns=['course_id','previous_course_id'])
+        else:
+            prevdb=pd.DataFrame(prevlist,columns=['course_id','previous_course_id'],index=[0])
+        if len(intersectedlist)>0:
+            intersecteddb=pd.DataFrame(intersectedlist,columns=['course_id','ta_course_id'])
+        else:
+            intersecteddb=pd.DataFrame(intersectedlist,columns=['course_id','ta_course_id'],index=[0])
+        
+        homodb.to_csv(self.outpath+'homo_listDB.txt',index=False,header=None )
+        prevdb.to_csv(self.outpath+'prev_listDB.txt',index=False,header=None)
+        intersecteddb.to_csv(self.outpath+'intersected_listDB.txt',index=False,header=None)
         
         #courseDB::::
         #필요한 것 솎아내기
@@ -213,10 +302,52 @@ class ParseFitDB:
             allmajor.append([major_division,university_name,college_name,major_name])
         allmajordf=pd.DataFrame(allmajor,columns=['major_division','university_name','college_name','major_name'])
         
-        print('\n\nALL MAJOR DB::::::::::\n',allmajordf.head(5))
+        #print('\n\nALL MAJOR DB::::::::::\n',allmajordf.head(5))
         allmajordf.to_csv(self.outpath+'allmajorDB.txt',header=None,index=False)  
+
+    def create_curr_stand_course_per_curriculum(self,resultdict):
+        if self.check_all_nav_same()==False:
+            assert('nav 항목이 서로 다른 교과과정표 존재')
+            
+            
+        curr_id=resultdict['currid'] 
+        
+        
+        #1.standard 모으기
+        
+        ## df 들 모으기
+        keys=[]
+        for key in resultdict.keys():
+            if 'df' in key:
+                keys.append(key)
+        ## standard를 모으는 동시에, standard 별 수업 모으기 
+        curr_standards=[]
+        standard_course=[]
+        for key in keys:
+            s,k=resultdict[key] #standard list와 standard 별 id: df 
+            
+            
+            ###무지성 standard모으기 
+            #st를 standard name, credit type, must_limit 구하기
+            #NeedWork: small standard의 경우 mid나 big에 의해 필수 및 제한사항이 영향받을 수 있다. 
+            curr_standards+=[(curr_id,st) for st in s] 
+            
+            ##standard_course 모으기 
+            s_indices=index_interpreter(list(k.keys()))
+            for standard_index,dataframe in zip(s_indices,list(k.values())):
+                
+                #print(s[standard_index],'\n---------\n',dataframe.iloc[:,decrement(self.nav_swhere[1])].values)
+                #print(dataframe.columns)
+                name=get_standard_name(s[standard_index])
+                standard_course+=[(curr_id,name,course_id) for course_id in dataframe.iloc[:,decrement(self.nav_swhere[1])].values ]
+        
+       
+        standard_courseDB=pd.DataFrame(standard_course,columns=['curr_id','standard_name','course_id'])
+        standard_courseDB.to_csv(self.outpath+'standard_courseDB.txt')
     
-     
+    def create_curr_standard(self):
+        for resultdict in self.resultdicts:
+            self.create_curr_stand_course_per_curriculum(resultdict)
     def create_per_curriculum(self,resultdict):
         
         #금방 구하는 것들
@@ -250,7 +381,9 @@ class ParseFitDB:
         # 필수여부=필수
         gyo_num=0
         standards=flattenlist(standards)
+            
         for s in standards:
+            print(s)
             try:
                 if s['credittype'] in ['section','course','whole']:
                     if '전' not in s['구분']:
@@ -258,10 +391,10 @@ class ParseFitDB:
                             gyo_num+=int(s['credit'])
                     
             except:
-                print('필교학점이 존재하지 않습니다')
+                print('필수학점이 존재하지 않습니다')
             
         
-        return {'curr_id':curr_id,'the_year':the_year,'subject_name':subject_name,'major_division':major_division,'elec_num':elec_num,'gyo_num':gyo_num}
+        return {'curr_id':curr_id,'the_year':the_year,'subject_name':subject_name,'major_division':major_division,'elec_num':elec_num,'ge_info':gyo_num}
     def create_all_curriculum(self):
         '''
         curr_id[PK]
@@ -337,11 +470,15 @@ if __name__=='__main__':
         resultdicts.append(resultnew)#[(s,df)]
     
     p=ParseFitDB(resultdicts,outpath)
-    _,subject_names=p.alldf_all_resultdict()
-    print(subject_names)
+    
+    #실제 교과목명임 
+    #_,subject_names=p.alldf_all_resultdict()
+    #print(subject_names)
+    #p.check_all_nav_same()
+    p.create_curr_standard()
     '''
     p.create_allmajor()
-    p.create_course_prev()
+    p.create_course_prev_homo_intersected()
     p.create_all_curriculum()
     p.create_curri_course()
     '''

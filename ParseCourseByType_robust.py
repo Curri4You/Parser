@@ -252,6 +252,7 @@ class ParseCoursebyType:
         for i,d in enumerate(dfs):
             newid=id+'-'+str(i+1)+'-0'
             ret_dict[newid]=d
+        #print('in mid',len(standards)==len(ret_dict))
         return standards, ret_dict
     
     def mid_small(self,id,df):
@@ -288,6 +289,7 @@ class ParseCoursebyType:
             if depth_w_map(d,0)==1:
                 #print('found small',d)
                 small_standard,ret_small=self.small_only(id,d,mid=i+1)#big
+                #print('small in mid',len(small_standard)==len(ret_small))
                 rets.append(ret_small)          
                 standards.append(small_standard)  
             #없다면 
@@ -297,7 +299,7 @@ class ParseCoursebyType:
                 newid=id+'-'+str(i+1)+'-0'
                 rets.append({newid:d})
                 
-        
+        #print('in mid small',len(flattenlist(standards))==len(flattendict(rets)))
         return flattenlist(standards), flattendict(rets)
                 
     def small_only(self,id,df,mid=0):
@@ -324,6 +326,7 @@ class ParseCoursebyType:
         for i,d in enumerate(dfs):
             newid=id+'-'+str(mid)+'-'+str(i+1)
             ret_dict[newid]=d
+        #print('in small',len(standards),len(ret_dict))
         return standards, ret_dict
     def run(self,df,id='1'):#한 big standard 블록을 받을 것 
         #1붜터 20의 column을 기대해야함
@@ -362,6 +365,7 @@ class ParseCoursebyType:
         else:
             print('Miss, your extra setting is a little weird:',deep)
 		
+        #print(ret_df.keys())
         return  flattenlist(standards),ret_df
 
 def run_parser(resultdict):
@@ -373,6 +377,8 @@ def run_parser(resultdict):
         if 'df' in key:
             standard_intact_df=resultdict[key]
             s,k=parser.run(standard_intact_df,id=str(i))
+            #TEST
+            #print('SK::::',len(s),k.keys())
             newresultdict[key]=(s,k)
     newresultdict['general_info']=parser.general_info()
     return newresultdict
