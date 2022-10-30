@@ -112,18 +112,21 @@ def index_interpreter(all_indices): #[1-1-1,1-1-2,1-2-0,1-3-1] 각각의 standar
         else:
             print('??')
     return standard_indices
-
+def strip_name(s):
+    s=s.strip() 
+    s=re.sub('[\t\n]','',s)
+    return s
 def get_standard_name(st): #구분, 구분2 등 뭐가 있고 없을 수 있음 
     #이름 분명히하기
     keys=st.keys()
     if '구분'in keys:
         if '구분2' in keys:
-            name=st['구분']+'-'+'구분2'
+            name=strip_name(st['구분'])+'-'+strip_name(st['구분2'])
         else:
-            name=st['구분']
+            name=strip_name(st['구분'])
     else:
         if '구분2' in keys:
-            name=st['구분2'] 
+            name=strip_name(st['구분2'] )
         else:
             name=''
             print('Something gone wrong, no standard name ') 
@@ -326,11 +329,7 @@ class ParseFitDB:
         for key in keys:
             s,k=resultdict[key] #standard list와 standard 별 id: df 
             
-            
-            ###무지성 standard모으기 
-            #st를 standard name, credit type, must_limit 구하기
-            #NeedWork: small standard의 경우 mid나 big에 의해 필수 및 제한사항이 영향받을 수 있다. 
-            curr_standards+=[(curr_id,st) for st in s] 
+           
             
             ##standard_course 모으기 
             s_indices=index_interpreter(list(k.keys()))
@@ -340,7 +339,16 @@ class ParseFitDB:
                 #print(dataframe.columns)
                 name=get_standard_name(s[standard_index])
                 standard_course+=[(curr_id,name,course_id) for course_id in dataframe.iloc[:,decrement(self.nav_swhere[1])].values ]
-        
+            
+            
+            ###무지성 standard모으기 
+            #st를 standard name, credit type, must_limit 구하기
+            #NeedWork: small standard의 경우 mid나 big에 의해 필수 및 제한사항이 영향받을 수 있다. 
+
+            curr_standards+=[(curr_id,st) for st in s] 
+            for s_i ,val in zip(s_indices,list(k.keys())):
+                st=s[s_i]
+                big,mid,small=tuple(map(int,val.split('-')))
        
         standard_courseDB=pd.DataFrame(standard_course,columns=['curr_id','standard_name','course_id'])
         standard_courseDB.to_csv(self.outpath+'standard_courseDB.txt')
