@@ -284,12 +284,10 @@ class ParseCoursebyType:
             mid_standard=self.pretty_standard_bynav(list(mid_raw))#becomes dictionary
             standards.append(mid_standard)
             
-
             #d 안에 small standard가 있다면
             if depth_w_map(d,0)==1:
                 #print('found small',d)
                 small_standard,ret_small=self.small_only(id,d,mid=i+1)#big
-                #print('small in mid',len(small_standard)==len(ret_small))
                 rets.append(ret_small)          
                 standards.append(small_standard)  
             #없다면 
@@ -298,6 +296,7 @@ class ParseCoursebyType:
             
                 newid=id+'-'+str(i+1)+'-0'
                 rets.append({newid:d})
+            
                 
         #print('in mid small',len(flattenlist(standards))==len(flattendict(rets)))
         return flattenlist(standards), flattendict(rets)

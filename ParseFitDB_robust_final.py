@@ -114,7 +114,7 @@ def index_interpreter(all_indices): #[1-1-1,1-1-2,1-2-0,1-3-1] 각각의 standar
     return standard_indices
 def strip_name(s):
     s=s.strip() 
-    s=re.sub('[\t\n]','',s)
+    s=re.sub('[\t\n-]','',s)
     return s
 def get_standard_name(st): #구분, 구분2 등 뭐가 있고 없을 수 있음 
     #이름 분명히하기
@@ -345,13 +345,32 @@ class ParseFitDB:
             #st를 standard name, credit type, must_limit 구하기
             #NeedWork: small standard의 경우 mid나 big에 의해 필수 및 제한사항이 영향받을 수 있다. 
 
-            curr_standards+=[(curr_id,st) for st in s] 
+            #curr_standards+=[(curr_id,st) for st in s] 
             for s_i ,val in zip(s_indices,list(k.keys())):
                 st=s[s_i]
                 big,mid,small=tuple(map(int,val.split('-')))
+                
+                #일단 주어진 st에 모든 정보가 있는지 확인한다. 
+                name=get_standard_name(st)
+                try:
+                    if st['diff_by_div']==True: 
+                        credit_1=st['1_credit']
+                        credit_2=st['2_credit']
+                        curr_standards.append((curr_id,name+'(심화)',credit_1))
+                        curr_standards.append((curr_id,name+'(기타)',credit_2))
+                    else:
+                        credit=st['credit'] 
+                        curr_standards.append((curr_id,name,credit))
+                except:
+                    #'credit'not found 
+                    #mid는 존재하는데 small이 존재하지 않을 경우는 없다    
+                    credit=0
+                    curr_standards.append((curr_id,name,credit))
        
+        curr_standardsDB=pd.DataFrame(curr_standards,columns=['curr_id','standard_name','credit'])
+        curr_standardsDB.to_csv(self.outpath+'curr_standardsDB.txt',index=None,header=False)
         standard_courseDB=pd.DataFrame(standard_course,columns=['curr_id','standard_name','course_id'])
-        standard_courseDB.to_csv(self.outpath+'standard_courseDB.txt')
+        standard_courseDB.to_csv(self.outpath+'standard_courseDB.txt',index=None,header=False)
     
     def create_curr_standard(self):
         for resultdict in self.resultdicts:
@@ -443,6 +462,8 @@ class ParseFitDB:
             df=df.iloc[:,list(map(decrement,self.nav_swhere[1:]))].copy()
             rename_columns={k:v for k,v in zip(df.columns,self.nav[1:])}
             df=df.rename(columns=rename_columns)
+            
+            #course_id 가져오기 
             course_id=pd.DataFrame(df['영역명(학수번호)*:신설교과목'].values,columns=['course_id'])
             
             #currid 가져오기
@@ -484,9 +505,9 @@ if __name__=='__main__':
     #print(subject_names)
     #p.check_all_nav_same()
     p.create_curr_standard()
-    '''
+    
     p.create_allmajor()
     p.create_course_prev_homo_intersected()
     p.create_all_curriculum()
     p.create_curri_course()
-    '''
+    
