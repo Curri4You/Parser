@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import hashlib
 #give dataframes of csv files [generator]
 def dataframe_generator(root,filenames):
     for file in filenames:
@@ -19,6 +20,13 @@ df1=df.iloc[h_index:jg_index] #핵심교양
 df2=df.iloc[jg_index:j_index]#전공기초
 df3=df.iloc[j_index:g_index]#[교과과정안내]
 '''
+def get_currid(*args):
+    m=hashlib.sha256()
+    inp=''
+    for info in args:
+        inp+=info
+    m.update(inp.encode())
+    return m.hexdigest()
 def dataframe_splitter(df):
     #print('\n\nDf being splitted ::::::::::::::::::::\n\n')
 
@@ -37,8 +45,12 @@ def dataframe_splitter(df):
     end=rows.index('[교과과정안내]')
     nav_index=ids[start]
     
-    result={'elec_num':rows[3],'currid':rows[0][:-9],'year':rows[1][:4],'info':rows[2],'bef':df.iloc[0:start+3],'nav':df.iloc[nav_index]}
+    
+    result={'elec_num':rows[3],'year':rows[1][:4],'info':rows[2],'bef':df.iloc[0:start+3],'nav':df.iloc[nav_index]}
     #print(rows[0][:-9],'AAAAAAHHHHHH')
+    
+    currid=get_currid(result['year'],result['info']) #NEED WORK
+    result['currid']=currid
     name_index=0
     
     for id in range(start+1,end):
@@ -48,7 +60,7 @@ def dataframe_splitter(df):
         try:
             tmp=df.iloc[slice_start:slice_end]
         except:
-            tmp=df.iloc[slice_start:gyo_index]
+            tmp=df.iloc[slice_start:end]
             
         #string-fy columnnames 
         newcols=map(str,list(tmp.columns))

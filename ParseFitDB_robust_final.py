@@ -410,15 +410,22 @@ class ParseFitDB:
         standards=flattenlist(standards)
             
         for s in standards:
-            print(s)
+            #내용 확인
+            #print(s)
+            do=0
             try:
-                if s['credittype'] in ['section','course','whole']:
-                    if '전' not in s['구분']:
-                        if s['필수여부']=='필수':
-                            gyo_num+=int(s['credit'])
-                    
+                if '전' not in s['구분']:
+                    gyo_num+=int(s['credit'])
+                    do+=1
             except:
-                print('필수학점이 존재하지 않습니다')
+                pass #print('구분 or 필수여부 doesnt exist',s)
+            try:
+                if '전' not in s['구분2'] and do==0:
+                    gyo_num+=int(s['credit'])
+            except:
+                print('구분2 or 필수여부 doesnt exist',s)
+                        
+                    
             
         
         return {'curr_id':curr_id,'the_year':the_year,'subject_name':subject_name,'major_division':major_division,'elec_num':elec_num,'ge_info':gyo_num}
