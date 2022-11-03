@@ -5,6 +5,7 @@ from collections import deque
 import os
 from utils import *
 import hashlib
+import os.path as osp
 
 
 def decrement(a):
@@ -21,7 +22,7 @@ def find_filled_element(li):
         if len(l)!=0:
             return l 
     return '-1'
-def prev_list_filtered(a):
+def filter_bigo(a):
     #한 개 course의 란에 대해 등장 
     if isinstance(a,str):
         #여러개인 경우
@@ -139,6 +140,8 @@ class ParseFitDB:
     def __init__(self,resultdicts,outpath):
         self.resultdicts=resultdicts
         self.outpath=outpath
+        if self.check_all_nav_same()==False:
+            assert('nav 항목이 서로 다른 교과과정표 존재')
     def alldf_per_resultdict(self,resultdict): #done!
         keys=resultdict.keys()
         dfkeys=[f for f in keys if 'df' in f]
@@ -150,14 +153,14 @@ class ParseFitDB:
             all_dfs+=dfs 
         
         result_alldf= pd.concat(all_dfs,axis=0)
-        subject_name=resultdict['general_info']['subject_name']
-        return result_alldf, subject_name
+        return result_alldf
     def alldf_all_resultdict(self): #done!
         
         dfs=[]
         subject_names=[]
         for resultdict in self.resultdicts:
-            df,subject_name=self.alldf_per_resultdict(resultdict)
+            subject_name=resultdict['general_info']['subject_name']
+            df=self.alldf_per_resultdict(resultdict)
             
             #중복 없애지 않고 그냥 합치기
             dfs.append(df)
@@ -186,17 +189,40 @@ class ParseFitDB:
             #error indicator
             print('하나의 데이터프레임으로 뭉치는 것도 안됨(column 수 다름)')
         return False
-    def create_course_prev_homo_intersected(self):
+    def create_intersected(self):
+        
+        curr_ids=[]
+        course_ids=[]
+        for resultdict in self.resultdicts:
+            #curr id 찾기
+            curr_id=resultdict['currid']
+            
+            #df 추출
+            df=self.alldf_per_resultdict(resultdict)
+            df_copy=df.iloc[:,list(map(decrement,self.nav_swhere[1:]))].copy() #필요한 열만 추출하기
+            rename_columns={k:v for k,v in zip(df_copy.columns,self.nav[1:])} #열 이름 설정하기 
+            df_cut=df_copy.rename(columns=rename_columns) #열 이름 설정하기 
+            all_course_id_bigo=df_cut[['영역명(학수번호)*:신설교과목','비고']].copy()#필요한 열만 확인하기
+            bigo=all_course_id_bigo['비고'].apply(filter_bigo) #비고란 처리하기
+            for course_id, bg in zip (list(all_course_id_bigo['영역명(학수번호)*:신설교과목']),bigo):
+                if '[3]' in bg:
+                    curr_ids.append(curr_id)
+                    course_ids.append(course_id)
+                else:
+                    test=re.findall('\[[0-9]+\]',bg)
+                    if len(test)>0:
+                        print(course_id,curr_id,test)
+    
+          
+        if len(curr_ids)>0:
+            tadb=pd.DataFrame({'curr_id':curr_ids,'course_id':course_ids}).to_csv(osp.join(self.outpath,'intersected_listDB.txt'),header=None,index=False)
+        else:
+            tadb=pd.DataFrame({'curr_id':curr_ids,'course_id':course_ids},index=[0]) .to_csv(osp.join(self.outpath,'intersected_listDB.txt'),header=None,index=False)
+            
+    def create_course_prev_homo(self):
         #df0~df6을 합치고, df마다 소속된 subject_name을 list로 반환중임
         alldfs,subject_names=self.alldf_all_resultdict() 
         
-        #중복제거 하지 말기 
-        #nav부터 확인
-        if self.check_all_nav_same()==False:
-            assert('nav 항목이 서로 다른 교과과정표 존재')
-            
-        #nav 같으니까 nav 쓰기(check 함수 이용 이후 self.nav, self.nav_swhere (정수형) 생김)
-        #구분부터 있음 
         
         #ourseDB:::: courseDB 1차
         # '영역명(학수번호)*:신설교과목', '교과목명', '이수권장학년', '설정학기', '시간', '학점', '필수여부', '학사편입생제외여부', '개설학과', '2022학년2학기개설여부', '비고'
@@ -207,16 +233,15 @@ class ParseFitDB:
         coursedb=coursedb.rename(columns=rename_columns)
       
         #prev, homo, intersected DB::::
-        prev_homo_intersected=coursedb[['영역명(학수번호)*:신설교과목','비고']].copy()
-        prev_homo_intersected=prev_homo_intersected.rename(columns={'영역명(학수번호)*:신설교과목':'course_id','비고':'bigo'})
-        bigo=prev_homo_intersected['bigo'].apply(prev_list_filtered)  #-가 여러개 있을 수 있음
+        prev_homo=coursedb[['영역명(학수번호)*:신설교과목','비고']].copy()
+        prev_homo=prev_homo.rename(columns={'영역명(학수번호)*:신설교과목':'course_id','비고':'bigo'})
+        bigo=prev_homo['bigo'].apply(filter_bigo)  #-가 여러개 있을 수 있음
         
         
         prevlist=[]
         homolist=[]
-        intersectedlist=[]
-        #need work: intersected list는 curr_id가 필요함
-        for cid,i in zip(prev_homo_intersected['course_id'].tolist(), list(bigo)):
+        
+        for cid,i in zip(prev_homo['course_id'].tolist(), list(bigo)):
             
             if '-' in i: #여러개 있는 경우 
                 print(len(str(i).split('-')),re.findall('\[[0-9]+\]',str(i)))
@@ -226,16 +251,14 @@ class ParseFitDB:
                         homolist.append((cid,j_cid))
                     elif '[2]' in j:
                         prevlist.append((cid,j_cid)) 
-                    elif '[3]' in j:
-                        intersectedlist.append((cid,j_cid)) 
+                        #[3]의 경우 타전공을 의미(intersected) 제외한다.
+                    
             else:#한 개 있는 경우
                 i_cid=i[3:]
                 if '[1]' in i: 
                     homolist.append((cid,i_cid))
                 elif '[2]' in i:
                     prevlist.append((cid,i_cid)) 
-                elif '[3]' in i:
-                    intersectedlist.append((cid,i_cid)) 
                 else:
                     #다 0으로 잘 채워져있는 것 같다. 
                     #print('bigo:',i)
@@ -251,14 +274,10 @@ class ParseFitDB:
             prevdb=pd.DataFrame(prevlist,columns=['course_id','previous_course_id'])
         else:
             prevdb=pd.DataFrame(prevlist,columns=['course_id','previous_course_id'],index=[0])
-        if len(intersectedlist)>0:
-            intersecteddb=pd.DataFrame(intersectedlist,columns=['course_id','ta_course_id'])
-        else:
-            intersecteddb=pd.DataFrame(intersectedlist,columns=['course_id','ta_course_id'],index=[0])
         
         homodb.to_csv(self.outpath+'homo_listDB.txt',index=False,header=None )
         prevdb.to_csv(self.outpath+'prev_listDB.txt',index=False,header=None)
-        intersecteddb.to_csv(self.outpath+'intersected_listDB.txt',index=False,header=None)
+        
         
         #courseDB::::
         #필요한 것 솎아내기
@@ -314,8 +333,7 @@ class ParseFitDB:
         allmajordf.to_csv(self.outpath+'allmajorDB.txt',header=None,index=False)  
 
     def create_curr_stand_course_per_curriculum(self,resultdict):
-        if self.check_all_nav_same()==False:
-            assert('nav 항목이 서로 다른 교과과정표 존재')
+            
             
             
         curr_id=resultdict['currid'] 
@@ -548,7 +566,7 @@ if __name__=='__main__':
         resultdicts.append(resultnew)#[(s,df)]
     
     p=ParseFitDB(resultdicts,outpath)
-    p.create_course_prev_homo_intersected()
+    p.create_intersected()
     #실제 교과목명임 
     #_,subject_names=p.alldf_all_resultdict()
     #print(subject_names)
