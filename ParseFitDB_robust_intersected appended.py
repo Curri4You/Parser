@@ -135,7 +135,60 @@ def get_standard_name(st): #구분, 구분2 등 뭐가 있고 없을 수 있음
             name=''
             print('Something gone wrong, no standard name ') 
     return name    
+def is_gyoyang(st):
+    if '기초교양'in st:
+        return 1
+    elif '영어'in st:
+        return 1
+    elif '프랑스어'in st:
+        return 1
+    elif '일본어' in st:
+        return 1
+    elif'독일어'in st:
+        return 1
+    elif '스페인어'in st:
+        return 1
+    elif '러시아어'in st:
+        return 1
+    elif '사고와표현'in st:
+        return 1
+    elif'나눔리더십' in st:
+        return 1
+    elif '이화진선미' in st:
+        return 1
+    elif '기독교와세계'in st:
+        return 1
+    elif '융합기초' in st:
+        return 1
+    else:
+        return 0
+def is_pilgyo(st):
+    if '융복합교양' in st:
+        return 1
+    elif  '큐브' in st:
+        return 1
+    return 0
+def is_jeongi(st):
+    if '기본이수' in st:
+        return 1
+    elif  '전공기초' in st:
+        return 1
+    return 0
+def standard_to_coursetype(st):
+    coursetype=-1
+    if is_gyoyang(st):
+        coursetype=2
+    elif is_pilgyo(st):
+        coursetype=3
+    elif '전공필수' in st:
+        coursetype=4
+    elif is_jeongi(st):
+        coursetype=5
+    elif '전공선택' in st:
+        coursetype=1
     
+    return coursetype
+
 class ParseFitDB:
     def __init__(self,resultdicts,outpath):
         self.resultdicts=resultdicts
@@ -392,11 +445,11 @@ class ParseFitDB:
        
         curr_standardsDB=pd.DataFrame(curr_standards,columns=['curr_id','standard_name','credit'])
         standard_courseDB=pd.DataFrame(standard_course,columns=['curr_id','standard_name','course_id'])
-        #curri_courseDB=standard_courseDB.copy()
-        #curri_courseDB['standard_name']=curri_courseDB['standard_name'].apply(standard_index)
-        #curri_courseDB.rename({'standard_name':'course_type'})
+
         
-        return curr_standardsDB,standard_courseDB #,curri_courseDB
+        return curr_standardsDB,standard_courseDB
+        
+        return curr_standardsDB,standard_courseDB
     def create_curr_stand_course_all_curriculum(self):
         #모으기
         curr_standards=[]
@@ -412,14 +465,26 @@ class ParseFitDB:
         #합치기
         curr_standardsDB=pd.concat(curr_standards,axis=0)
         standard_courseDB=pd.concat(standard_courses,axis=0)
-        ##curri_courseDB=pd.concat(curri_courses,axis=0)
+        curri_courseDB=standard_courseDB.copy()
+        curri_courseDB=curri_courseDB.rename(columns={'standard_name':'course_type'})
+        curri_courseDB['course_type']=curri_courseDB['course_type'].apply(standard_to_coursetype)
+        
+        
+        '''
+        with open('log.txt','w') as f:
+            t=curri_courseDB[curri_courseDB['course_type']==-1]
+            s=''
+            for _ in list(t['standard_name'].values):
+                s+='\n'+_
+            f.write(s)
+            print(s)'''
+            
         
         #저장하기
         curr_standardsDB.to_csv(self.outpath+'curr_standardsDB.txt',index=None,header=False)
         standard_courseDB.to_csv(self.outpath+'standard_courseDB.txt',index=None,header=False)
         standard_courseDB.to_csv(self.outpath+'standard_courseDB_header.txt',index=None,header=True)
-        
-        ##curri_courseDB.to_csv(self.outpath+'curri_courseDB.txt',index=None,header=False)
+        curri_courseDB.to_csv(self.outpath+'curri_courseDB.txt',index=None,header=False)
     
     def create_per_curriculum(self,resultdict):
         
@@ -566,7 +631,7 @@ if __name__=='__main__':
         resultdicts.append(resultnew)#[(s,df)]
     
     p=ParseFitDB(resultdicts,outpath)
-    p.create_intersected()
+    #p.create_intersected()
     #실제 교과목명임 
     #_,subject_names=p.alldf_all_resultdict()
     #print(subject_names)
@@ -575,7 +640,8 @@ if __name__=='__main__':
     #p.create_curr_stand_course_all_curriculum()
     
     #p.create_curri_course_by_standard()
+    p.create_curr_stand_course_all_curriculum()
     #p.create_allmajor() 
     #p.create_all_curriculum()
-    #p.create_curri_course_by_standard()
+    
     
