@@ -522,12 +522,14 @@ class ParseFitDB:
         a.to_csv(self.outpath+'curri_courseDB2.txt',index=False )
 def standard_type(standard_name):
     if isinstance(standard_name,str):
-        if '전공선택' in standard_name:
-            return '1'
-        elif ('전공기초' or  '기본') in standard_name:       
-            return '4'
+        if standard_name.find('사고와')!=-1 or standard_name.find('기독교와세계')!=-1 or standard_name.find('대학영어')!=-1 :
+            return 1
+        elif standard_name.find('나눔리더십')!=-1 or standard_name.find('중국어')!=-1 or standard_name.find('독일어')!=-1 or standard_name.find('프랑스어')!=-1 or standard_name.find('일본어')!=-1 or standard_name.find('스페인어')!=-1 or standard_name.find('러시아어')!=-1 or standard_name.find('고급영어')!=-1 or standard_name.find('융합기초')!=-1 or standard_name.find('큐브')!=-1:
+            return 2
+        elif standard_name.find('전공기초(선택필')!=-1 or standard_name.find('전공선택')!=-1:
+            return 4
         else:
-            return '3'
+            return 3
     return '-1'
 if __name__=='__main__':
     #test dataframe_generator
@@ -555,7 +557,7 @@ if __name__=='__main__':
     #p.check_all_nav_same()
     
     
-    #p.create_curri_course_by_standard()
+    p.create_curri_course_by_standard()
     p.create_allmajor() 
     p.create_all_curriculum()
     p.create_curri_course()
