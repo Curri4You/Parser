@@ -1,3 +1,4 @@
+major_division,university_name,college_name,major_name
 1,이화여자대학교,엘텍공과대학, 건축도시시스템공학
 1,이화여자대학교,엘텍공과대학, 건축학
 1,이화여자대학교,엘텍공과대학, 기후·에너지시스템공학

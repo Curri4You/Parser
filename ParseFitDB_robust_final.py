@@ -256,9 +256,9 @@ class ParseFitDB:
         else:
             intersecteddb=pd.DataFrame(intersectedlist,columns=['course_id','ta_course_id'],index=[0])
         
-        homodb.to_csv(self.outpath+'homo_listDB.txt',index=False,header=None )
-        prevdb.to_csv(self.outpath+'prev_listDB.txt',index=False,header=None)
-        intersecteddb.to_csv(self.outpath+'intersected_listDB.txt',index=False,header=None)
+        homodb.to_csv(self.outpath+'homo_listDB.txt',index=False  )
+        prevdb.to_csv(self.outpath+'prev_listDB.txt',index=False )
+        intersecteddb.to_csv(self.outpath+'intersected_listDB.txt',index=False )
         
         #courseDB::::
         #필요한 것 솎아내기
@@ -283,7 +283,7 @@ class ParseFitDB:
         selected['syllabus_id']=selected['syllabus_id'].apply(syllabus_id_filtered)
         
         #print('\n\nCOURSEDB:::::',selected.head(5))
-        selected.to_csv(self.outpath+'courseDB.txt',header=None,index=False)
+        selected.to_csv(self.outpath+'courseDB.txt' ,index=False)
         
     
     #need work 
@@ -311,7 +311,7 @@ class ParseFitDB:
         allmajordf=pd.DataFrame(allmajor,columns=['major_division','university_name','college_name','major_name'])
         
         #print('\n\nALL MAJOR DB::::::::::\n',allmajordf.head(5))
-        allmajordf.to_csv(self.outpath+'allmajorDB.txt',header=None,index=False)  
+        allmajordf.to_csv(self.outpath+'allmajorDB.txt' ,index=False)  
 
     def create_curr_stand_course_per_curriculum(self,resultdict):
         if self.check_all_nav_same()==False:
@@ -479,7 +479,7 @@ class ParseFitDB:
         
         all_curriculum=pd.DataFrame(curriculums)
         #print('\n\nCURRICULUM DB::::::::::\n',all_curriculum.head(5))
-        all_curriculum.to_csv(self.outpath+'curriculumDB.txt',header=None,index=False)
+        all_curriculum.to_csv(self.outpath+'curriculumDB.txt' ,index=False)
     
     def create_curri_course(self):
         #course마다
@@ -514,12 +514,12 @@ class ParseFitDB:
             
         curridfs=pd.concat(dfs,axis=0)
         #print('\n\nCURRI-COURSE DB:::::::::::\n',curridfs.head(5))
-        curridfs.to_csv(self.outpath+'curri_courseDB.txt',index=False,header=None)
+        curridfs.to_csv(self.outpath+'curri_courseDB.txt',index=False )
     def create_curri_course_by_standard(self):
         a=pd.read_csv(self.outpath+'standard_courseDB_header.txt')
         a['standard_name']=a['standard_name'].apply(standard_type)
         a.rename(columns={'standard_name':'course_type'})   
-        a.to_csv(self.outpath+'curri_courseDB2.txt',index=False,header=None)
+        a.to_csv(self.outpath+'curri_courseDB2.txt',index=False )
 def standard_type(standard_name):
     if isinstance(standard_name,str):
         if '전공선택' in standard_name:
@@ -554,10 +554,11 @@ if __name__=='__main__':
     #print(subject_names)
     #p.check_all_nav_same()
     
-    #p.create_curr_stand_course_all_curriculum()
     
     #p.create_curri_course_by_standard()
-    #p.create_allmajor() 
-    #p.create_all_curriculum()
-    #p.create_curri_course_by_standard()
+    p.create_allmajor() 
+    p.create_all_curriculum()
+    p.create_curri_course()
+    p.create_course_prev_homo_intersected()
+    p.create_curr_stand_course_all_curriculum()
     

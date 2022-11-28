@@ -1,3 +1,4 @@
+course_id,previous_course_id
 10904,10903
 10903,10904
 36573,38781

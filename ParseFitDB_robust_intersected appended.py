@@ -328,8 +328,8 @@ class ParseFitDB:
         else:
             prevdb=pd.DataFrame(prevlist,columns=['course_id','previous_course_id'],index=[0])
         
-        homodb.to_csv(self.outpath+'homo_listDB.txt',index=False,header=None )
-        prevdb.to_csv(self.outpath+'prev_listDB.txt',index=False,header=None)
+        homodb.drop_duplicates().to_csv(self.outpath+'homo_listDB.txt',index=False,header=None )
+        prevdb.drop_duplicates().to_csv(self.outpath+'prev_listDB.txt',index=False,header=None)
         
         
         #courseDB::::
@@ -355,8 +355,30 @@ class ParseFitDB:
         selected['syllabus_id']=selected['syllabus_id'].apply(syllabus_id_filtered)
         
         #print('\n\nCOURSEDB:::::',selected.head(5))
+        selected=selected.drop_duplicates()
+        print('length of courseDB after selection:',len(selected))
         selected.to_csv(self.outpath+'courseDB.txt',header=None,index=False)
         
+        
+        #check if prev and homo all exist inside selected
+        all_course_id=list(selected['course_id'])
+        count_homo=0
+        for i in list(homodb['course_id'])+list(homodb['homo_course_id']):
+        
+            if i not in all_course_id:
+                print(i)
+                count_homo+=1
+            else:
+                pass #print(i, 'is well')
+        count_prev  =0
+        for i in list(prevdb['course_id'])+list(prevdb['previous_course_id']):
+        
+            if i not in all_course_id:
+                print(i)
+                count_prev+=1
+            else:
+                pass #print(i, 'is well')
+        print('huh?',count_prev,count_homo)
     
     #need work 
     #major type 추가
@@ -598,11 +620,13 @@ class ParseFitDB:
         curridfs=pd.concat(dfs,axis=0)
         #print('\n\nCURRI-COURSE DB:::::::::::\n',curridfs.head(5))
         curridfs.to_csv(self.outpath+'curri_courseDB.txt',index=False,header=None)
+    '''
+    #deprecated
     def create_curri_course_by_standard(self):
         a=pd.read_csv(self.outpath+'standard_courseDB_header.txt')
         a['standard_name']=a['standard_name'].apply(standard_type)
         a.rename(columns={'standard_name':'course_type'})   
-        a.to_csv(self.outpath+'curri_courseDB2.txt',index=False,header=None)
+        a.to_csv(self.outpath+'curri_courseDB2.txt',index=False,header=None)'''
 def standard_type(standard_name):
     if isinstance(standard_name,str):
         if '전공선택' in standard_name:
@@ -635,12 +659,12 @@ if __name__=='__main__':
     #실제 교과목명임 
     #_,subject_names=p.alldf_all_resultdict()
     #print(subject_names)
+    
+    p.create_course_prev_homo()
     #p.check_all_nav_same()
-    
     #p.create_curr_stand_course_all_curriculum()
-    
     #p.create_curri_course_by_standard()
-    p.create_curr_stand_course_all_curriculum()
+    #p.create_curr_stand_course_all_curriculum()
     #p.create_allmajor() 
     #p.create_all_curriculum()
     
